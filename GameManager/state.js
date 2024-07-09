@@ -1,30 +1,37 @@
 import eventBus from "../Common/eventbus.js";
 import Square from "./square.js";
+import { PieceType, PieceColour } from "./Pieces/utils.js";
+import Bishop from "./Pieces/bishop.js";
+import King from "./Pieces/king.js";
+import Knight from "./Pieces/knight.js";
+import Pawn from "./Pieces/pawn.js";
+import Queen from "./Pieces/queen.js";
+import Rook from "./Pieces/rook.js";
 
 const BOARD_SIZE = 8;
 const INITIAL_PIECES = [
     [
-        "rook-black",
-        "knight-black",
-        "bishop-black",
-        "queen-black",
-        "king-black",
-        "bishop-black",
-        "knight-black",
-        "rook-black",
+        [PieceType.ROOK, PieceColour.BLACK],
+        [PieceType.KNIGHT, PieceColour.BLACK],
+        [PieceType.BISHOP, PieceColour.BLACK],
+        [PieceType.QUEEN, PieceColour.BLACK],
+        [PieceType.KING, PieceColour.BLACK],
+        [PieceType.BISHOP, PieceColour.BLACK],
+        [PieceType.KNIGHT, PieceColour.BLACK],
+        [PieceType.ROOK, PieceColour.BLACK],
     ],
-    Array(BOARD_SIZE).fill("pawn-black"),
+    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.BLACK]),
     ...Array(4).fill(Array(BOARD_SIZE).fill(null)),
-    Array(BOARD_SIZE).fill("pawn-white"),
+    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.WHITE]),
     [
-        "rook-white",
-        "knight-white",
-        "bishop-white",
-        "queen-white",
-        "king-white",
-        "bishop-white",
-        "knight-white",
-        "rook-white",
+        [PieceType.ROOK, PieceColour.WHITE],
+        [PieceType.KNIGHT, PieceColour.WHITE],
+        [PieceType.BISHOP, PieceColour.WHITE],
+        [PieceType.QUEEN, PieceColour.WHITE],
+        [PieceType.KING, PieceColour.WHITE],
+        [PieceType.BISHOP, PieceColour.WHITE],
+        [PieceType.KNIGHT, PieceColour.WHITE],
+        [PieceType.ROOK, PieceColour.WHITE],
     ],
 ];
 
@@ -41,16 +48,35 @@ class GameState {
         eventBus.emit("state::initialized", this);
     }
 
+    #createPiece(type, colour) {
+        switch (type) {
+            case PieceType.BISHOP:
+                return new Bishop(colour);
+            case PieceType.KING:
+                return new King(colour);
+            case PieceType.KNIGHT:
+                return new Knight(colour);
+            case PieceType.PAWN:
+                return new Pawn(colour);
+            case PieceType.QUEEN:
+                return new Queen(colour);
+            case PieceType.ROOK:
+                return new Rook(colour);
+        }
+        throw new Error("invalid type");
+    }
+
     #initializeBoard() {
         const board = new Array(BOARD_SIZE);
         for (let row = 0; row < BOARD_SIZE; row++) {
             board[row] = new Array(BOARD_SIZE);
             for (let col = 0; col < BOARD_SIZE; col++) {
-                board[row][col] = new Square(
-                    row,
-                    col,
-                    INITIAL_PIECES[row][col]
-                );
+                const pieceConfig = INITIAL_PIECES[row][col];
+                let piece = null;
+                if (pieceConfig) {
+                    piece = this.#createPiece(...pieceConfig);
+                }
+                board[row][col] = new Square(row, col, piece);
             }
         }
         return board;
