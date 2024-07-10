@@ -23,13 +23,15 @@ class Canvas {
         for (let i = 0; i < BOARD_SIZE; i++) {
             for (let j = 0; j < BOARD_SIZE; j++) {
                 if ((i + j) % 2 === 0) {
+                    // white squares
                     this.ctx.fillStyle = "#F5DEB3";
                 } else {
+                    // black squares
                     this.ctx.fillStyle = "#A0522D";
                 }
                 this.ctx.fillRect(
-                    BORDER_WIDTH + i * squareSize,
                     BORDER_WIDTH + j * squareSize,
+                    BORDER_WIDTH + i * squareSize,
                     squareSize,
                     squareSize
                 );
@@ -57,14 +59,15 @@ class Canvas {
         const sizeMultiplier = 0.93;
         const offset = (1 - sizeMultiplier) / 2;
 
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
-                const piece = gameState.getPiece(row, col);
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                const row = BOARD_SIZE - 1 - i;
+                const piece = gameState.getPiece(row, j);
                 if (piece) {
                     this.ctx.drawImage(
                         this.assetLoader.pieces[piece],
-                        BORDER_WIDTH + (col + offset) * squareSize,
-                        BORDER_WIDTH + (row + offset) * squareSize,
+                        BORDER_WIDTH + (j + offset) * squareSize,
+                        BORDER_WIDTH + (i + offset) * squareSize,
                         squareSize * sizeMultiplier,
                         squareSize * sizeMultiplier
                     );

@@ -8,7 +8,10 @@ class Bishop extends Piece {
 
     getLegalMoves(board, row, col) {
         const moves = [];
-
+        moves.push(...this.findDistanceMoves(board, row, col, 1, 1));
+        moves.push(...this.findDistanceMoves(board, row, col, 1, -1));
+        moves.push(...this.findDistanceMoves(board, row, col, -1, 1));
+        moves.push(...this.findDistanceMoves(board, row, col, -1, -1));
         return moves;
     }
 }

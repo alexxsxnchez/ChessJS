@@ -11,19 +11,6 @@ import Rook from "./Pieces/rook.js";
 const BOARD_SIZE = 8;
 const INITIAL_PIECES = [
     [
-        [PieceType.ROOK, PieceColour.BLACK],
-        [PieceType.KNIGHT, PieceColour.BLACK],
-        [PieceType.BISHOP, PieceColour.BLACK],
-        [PieceType.QUEEN, PieceColour.BLACK],
-        [PieceType.KING, PieceColour.BLACK],
-        [PieceType.BISHOP, PieceColour.BLACK],
-        [PieceType.KNIGHT, PieceColour.BLACK],
-        [PieceType.ROOK, PieceColour.BLACK],
-    ],
-    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.BLACK]),
-    ...Array(4).fill(Array(BOARD_SIZE).fill(null)),
-    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.WHITE]),
-    [
         [PieceType.ROOK, PieceColour.WHITE],
         [PieceType.KNIGHT, PieceColour.WHITE],
         [PieceType.BISHOP, PieceColour.WHITE],
@@ -32,6 +19,19 @@ const INITIAL_PIECES = [
         [PieceType.BISHOP, PieceColour.WHITE],
         [PieceType.KNIGHT, PieceColour.WHITE],
         [PieceType.ROOK, PieceColour.WHITE],
+    ],
+    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.WHITE]),
+    ...Array(4).fill(Array(BOARD_SIZE).fill(null)),
+    Array(BOARD_SIZE).fill([PieceType.PAWN, PieceColour.BLACK]),
+    [
+        [PieceType.ROOK, PieceColour.BLACK],
+        [PieceType.KNIGHT, PieceColour.BLACK],
+        [PieceType.BISHOP, PieceColour.BLACK],
+        [PieceType.QUEEN, PieceColour.BLACK],
+        [PieceType.KING, PieceColour.BLACK],
+        [PieceType.BISHOP, PieceColour.BLACK],
+        [PieceType.KNIGHT, PieceColour.BLACK],
+        [PieceType.ROOK, PieceColour.BLACK],
     ],
 ];
 
