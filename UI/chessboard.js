@@ -217,41 +217,49 @@ class Chessboard {
                 const row = BOARD_SIZE - 1 - i;
                 const piece = this.game.gameState.getPiece(row, j);
                 if (piece) {
-                    const pieceX = BORDER_WIDTH + (j + offset) * squareSize;
-                    const pieceY = BORDER_WIDTH + (i + offset) * squareSize;
-
                     if (
                         event &&
                         this.selectedPieceSquare &&
                         this.selectedPieceSquare.getPiece() === piece &&
                         this.initialMouseDownCoords
                     ) {
-                        const rect = canvas.getBoundingClientRect();
-                        const x = event.clientX - rect.left;
-                        const y = event.clientY - rect.top;
-
-                        const initialOffsetX =
-                            this.initialMouseDownCoords[0] - pieceX;
-                        const initialOffsetY =
-                            this.initialMouseDownCoords[1] - pieceY;
-                        this.ctx.drawImage(
-                            this.assetLoader.pieces[piece],
-                            x - initialOffsetX,
-                            y - initialOffsetY,
-                            squareSize * sizeMultiplier,
-                            squareSize * sizeMultiplier
-                        );
+                        // draw hovered piece last
+                        continue;
                     } else {
                         this.ctx.drawImage(
                             this.assetLoader.pieces[piece],
-                            pieceX,
-                            pieceY,
+                            BORDER_WIDTH + (j + offset) * squareSize,
+                            BORDER_WIDTH + (i + offset) * squareSize,
                             squareSize * sizeMultiplier,
                             squareSize * sizeMultiplier
                         );
                     }
                 }
             }
+        }
+
+        // draw hovered piece
+        if (event && this.selectedPieceSquare && this.initialMouseDownCoords) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const initialOffsetX =
+                this.initialMouseDownCoords[0] -
+                (BORDER_WIDTH +
+                    (this.selectedPieceSquare.col + offset) * squareSize);
+            const initialOffsetY =
+                this.initialMouseDownCoords[1] -
+                (BORDER_WIDTH +
+                    (BOARD_SIZE - 1 - this.selectedPieceSquare.row + offset) *
+                        squareSize);
+            this.ctx.drawImage(
+                this.assetLoader.pieces[this.selectedPieceSquare.getPiece()],
+                x - initialOffsetX,
+                y - initialOffsetY,
+                squareSize * sizeMultiplier,
+                squareSize * sizeMultiplier
+            );
         }
     }
 
