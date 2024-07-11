@@ -1,26 +1,29 @@
 import eventBus from "./Common/eventbus.js";
-import Canvas from "./UI/canvas.js";
-import Game from "./GameManager/game.js";
+import { Game } from "./GameManager/game.js";
+import SidePanel from "./UI/sidepanel.js";
+import AssetLoader from "./UI/assetLoader.js";
+import Chessboard from "./UI/chessboard.js";
 
 function main() {
-    const canvas = new Canvas();
+    const assetLoader = new AssetLoader(); // load assets
 
+    const sidepanel = new SidePanel();
+
+    let chessboard = null;
     let game = null;
     eventBus.on("assets::ready", () => {
         game = new Game();
-        const startButton = document.getElementById("startButton");
-        startButton.addEventListener("click", () => {
-            if (game.paused) {
-                game.start();
-            }
-        });
+        chessboard = new Chessboard(assetLoader, game);
+        game.start();
     });
 
-    eventBus.on("state::initialized", (gameState) => {
-        canvas.draw(gameState);
+    eventBus.on("sidepanel::start", () => {
+        if (game) {
+            game.restart();
+        }
     });
 
-    eventBus.on("game::start", () => {
+    eventBus.on("game::start", (game) => {
         console.log("ok game started");
     });
 }

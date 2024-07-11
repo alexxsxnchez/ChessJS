@@ -45,7 +45,9 @@ class InvalidGameStateError extends Error {
 class GameState {
     constructor() {
         this.board = this.#initializeBoard();
-        eventBus.emit("state::initialized", this);
+        this.currentTurn = PieceColour.WHITE;
+        this.moveHistory = [];
+        this.isGameOver = false;
     }
 
     #createPiece(type, colour) {
@@ -82,6 +84,33 @@ class GameState {
         return board;
     }
 
+    makeMove(fromSquare, toSquare) {
+        const piece = this.getPiece(fromSquare.row, fromSquare.col);
+        if (piece.getColour() === this.currentTurn) {
+            const moves = piece.getLegalMoves(
+                this,
+                fromSquare.row,
+                fromSquare.col
+            );
+            for (let move of moves) {
+                if (move === toSquare) {
+                    this.removePiece(fromSquare.row, fromSquare.col);
+                    this.setPiece(toSquare.row, toSquare.col, piece);
+
+                    this.currentTurn =
+                        this.currentTurn === PieceColour.WHITE
+                            ? PieceColour.BLACK
+                            : PieceColour.WHITE;
+
+                    // TODO - check gameStatus
+
+                    eventBus.emit("state::updated");
+                    return;
+                }
+            }
+        }
+    }
+
     isValidPosition(row, col) {
         return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
     }
@@ -90,14 +119,14 @@ class GameState {
         if (this.isValidPosition(row, col)) {
             return this.board[row][col];
         }
-        throw new InvalidGameStateError("invalid square");
+        throw new InvalidGameStateError(`invalid square - ${row} ${col}`);
     }
 
     setPiece(row, col, piece) {
         if (this.isValidPosition(row, col)) {
             this.board[row][col].setPiece(piece);
         } else {
-            throw new InvalidGameStateError("invalid square");
+            throw new InvalidGameStateError(`invalid square - ${row} ${col}`);
         }
     }
 
@@ -105,7 +134,7 @@ class GameState {
         if (this.isValidPosition(row, col)) {
             this.board[row][col].removePiece();
         } else {
-            throw new InvalidGameStateError("invalid square");
+            throw new InvalidGameStateError(`invalid square - ${row} ${col}`);
         }
     }
 
@@ -113,7 +142,7 @@ class GameState {
         if (this.isValidPosition(row, col)) {
             return this.board[row][col].getPiece();
         }
-        throw new InvalidGameStateError("invalid square");
+        throw new InvalidGameStateError(`invalid square - ${row} ${col}`);
     }
 }
 
