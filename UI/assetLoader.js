@@ -1,20 +1,24 @@
 import eventBus from "../Common/eventbus.js";
+import {
+    PieceColour,
+    PieceType,
+} from "../GameManager/Immutable/Pieces/utils.js";
 
 class AssetLoader {
     constructor() {
         this.assetCounter = 0;
         this.pieces = {};
 
-        const pieceNames = [
-            "pawn",
-            "rook",
-            "knight",
-            "bishop",
-            "queen",
-            "king",
+        const pieceTypes = [
+            PieceType.PAWN,
+            PieceType.ROOK,
+            PieceType.KNIGHT,
+            PieceType.BISHOP,
+            PieceType.QUEEN,
+            PieceType.KING,
         ];
-        const colours = ["white", "black"];
-        pieceNames.forEach((pieceName) => {
+        const colours = [PieceColour.WHITE, PieceColour.BLACK];
+        pieceTypes.forEach((pieceType) => {
             colours.forEach((colour) => {
                 const img = new Image();
                 img.onload = () => {
@@ -23,8 +27,8 @@ class AssetLoader {
                         eventBus.emit("assets::ready");
                     }
                 };
-                img.src = `../assets/${pieceName}-${colour}.svg`;
-                this.pieces[`${pieceName}-${colour}`] = img;
+                img.src = `../assets/${pieceType}-${colour}.svg`;
+                this.pieces[`${pieceType}-${colour}`] = img;
             });
         });
     }

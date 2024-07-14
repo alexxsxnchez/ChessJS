@@ -1,4 +1,6 @@
 import { PieceType, PieceColour } from "./utils.js";
+import { Move } from "../move.js";
+import Square from "../square.js";
 
 class Piece {
     constructor(type, colour) {
@@ -17,21 +19,20 @@ class Piece {
         this.colour = colour;
     }
 
-    getType() {
-        return this.type;
+    equals(other) {
+        return this.type === other.type && this.colour === other.colour;
     }
 
-    getColour() {
-        return this.colour;
+    getAvailableMoves(pieceSquare, position) {
+        throw new Error("Method 'getAvailableMoves()' must be implemented.");
     }
 
-    // Abstract method
-    getLegalMoves(board, row, col) {
-        throw new Error("Method 'getLegalMoves()' must be implemented.");
+    getAttackingMoves(pieceSquare, position) {
+        throw new Error("Method 'getAttackingMoves()' must be implemented.");
     }
 
     // Used by BISHOP, ROOK, QUEEN
-    findDistanceMoves(board, row, col, rowDir, colDir) {
+    findDistanceMoves(pieceSquare, position, rowDir, colDir) {
         if (
             (rowDir === 0 && colDir === 0) ||
             Math.abs(rowDir) > 1 ||
@@ -41,17 +42,18 @@ class Piece {
         }
 
         const moves = [];
-        row += rowDir;
-        col += colDir;
-        while (board.isValidPosition(row, col)) {
-            const squarePiece = board.getPiece(row, col);
-            if (squarePiece) {
-                if (squarePiece.getColour() !== this.colour) {
-                    moves.push(board.getSquare(row, col));
+        let row = pieceSquare.row + rowDir;
+        let col = pieceSquare.col + colDir;
+        while (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            const toSquare = new Square(row, col);
+            const otherPiece = position.getPiece(toSquare);
+            if (otherPiece) {
+                if (otherPiece.colour !== this.colour) {
+                    moves.push(new Move(pieceSquare, toSquare, this));
                 }
                 break;
             }
-            moves.push(board.getSquare(row, col));
+            moves.push(new Move(pieceSquare, toSquare, this));
             row += rowDir;
             col += colDir;
         }

@@ -1,5 +1,6 @@
-import { PieceColour } from "../GameManager/Pieces/utils.js";
+import { PieceColour } from "../GameManager/Immutable/Pieces/utils.js";
 import eventBus from "../Common/eventbus.js";
+import Square from "../GameManager/Immutable/square.js";
 
 const BOARD_SIZE = 8;
 const BORDER_WIDTH = 3;
@@ -37,18 +38,13 @@ class Chessboard {
             this.draw();
         });
 
-        // eventBus.on("state::highlightSquares", (highlightSquares) => {
-        //     this.highlightSquares = highlightSquares;
-        // });
-
-        eventBus.on("game::humanMove", () => {
-            console.log("human move");
-            if (this.game.gameState.currentTurn === PieceColour.WHITE) {
-                console.log("white move");
+        eventBus.on("game::humanMove", (currentTurn) => {
+            if (currentTurn === PieceColour.WHITE) {
+                console.log("human - white move");
                 this.whiteInputEnabled = true;
                 this.blackInputEnabled = false;
             } else {
-                console.log("black move");
+                console.log("human - black move");
                 this.whiteInputEnabled = false;
                 this.blackInputEnabled = true;
             }
@@ -63,7 +59,7 @@ class Chessboard {
             if (this.selectedPieceSquare) {
                 // dropping piece that is already selected
                 const endSquare = this.#getEventSquare(e);
-                if (endSquare) {
+                if (endSquare && !endSquare.equals(this.selectedPieceSquare)) {
                     this.game.makeMove(this.selectedPieceSquare, endSquare);
                 }
                 this.selectedPieceSquare = null;
@@ -73,13 +69,13 @@ class Chessboard {
                 if (pieceSquare) {
                     this.selectedPieceSquare = pieceSquare;
                     this.initialMouseDownCoords = [e.clientX, e.clientY];
-                    this.highlightSquares = this.game.gameState
-                        .getPiece(pieceSquare.row, pieceSquare.col)
-                        .getLegalMoves(
-                            this.game.gameState,
-                            pieceSquare.row,
-                            pieceSquare.col
-                        );
+                    // TODO: need to check if leaves us in check
+                    const currentPosition =
+                        this.game.gameState.getCurrentPosition();
+                    const piece = currentPosition.getPiece(pieceSquare);
+                    this.highlightSquares = currentPosition
+                        .getLegalMoves(pieceSquare, piece)
+                        .map((move) => move.toSquare);
                 }
             }
             // (un)draw highlighted moves
@@ -93,7 +89,7 @@ class Chessboard {
                 return;
             }
             const endSquare = this.#getEventSquare(e);
-            if (endSquare) {
+            if (endSquare && !endSquare.equals(this.selectedPieceSquare)) {
                 this.game.makeMove(this.selectedPieceSquare, endSquare);
             }
             this.selectedPieceSquare = null;
@@ -126,8 +122,8 @@ class Chessboard {
         const row =
             BOARD_SIZE - 1 - Math.trunc((y - BORDER_WIDTH) / squareSize);
         const col = Math.trunc((x - BORDER_WIDTH) / squareSize);
-        if (this.game.gameState.isValidPosition(row, col)) {
-            return this.game.gameState.getSquare(row, col);
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            return new Square(row, col);
         }
         return null;
     }
@@ -137,13 +133,13 @@ class Chessboard {
         if (!square) {
             return null;
         }
-        const piece = square.getPiece();
+
+        const piece = this.game.gameState.getCurrentPosition().getPiece(square);
         if (piece) {
             if (
-                (piece.getColour() === PieceColour.WHITE &&
+                (piece.colour === PieceColour.WHITE &&
                     this.whiteInputEnabled) ||
-                (piece.getColour() === PieceColour.BLACK &&
-                    this.blackInputEnabled)
+                (piece.colour === PieceColour.BLACK && this.blackInputEnabled)
             ) {
                 return square;
             }
@@ -211,34 +207,27 @@ class Chessboard {
         const squareSize = this.#getSquareSize();
         const sizeMultiplier = 0.93;
         const offset = (1 - sizeMultiplier) / 2;
-
-        for (let i = 0; i < BOARD_SIZE; i++) {
-            for (let j = 0; j < BOARD_SIZE; j++) {
-                const row = BOARD_SIZE - 1 - i;
-                const piece = this.game.gameState.getPiece(row, j);
-                if (piece) {
-                    if (
-                        event &&
-                        this.selectedPieceSquare &&
-                        this.selectedPieceSquare.getPiece() === piece &&
-                        this.initialMouseDownCoords
-                    ) {
-                        // draw hovered piece last
-                        continue;
-                    } else {
-                        this.ctx.drawImage(
-                            this.assetLoader.pieces[piece],
-                            BORDER_WIDTH + (j + offset) * squareSize,
-                            BORDER_WIDTH + (i + offset) * squareSize,
-                            squareSize * sizeMultiplier,
-                            squareSize * sizeMultiplier
-                        );
-                    }
-                }
+        const position = this.game.gameState.getCurrentPosition();
+        for (let [pieceSquare, piece] of position.getPieceSquares()) {
+            const isSelectedPiece =
+                event &&
+                this.selectedPieceSquare &&
+                this.selectedPieceSquare.equals(pieceSquare) &&
+                this.initialMouseDownCoords;
+            if (!isSelectedPiece) {
+                this.ctx.drawImage(
+                    this.assetLoader.pieces[piece],
+                    BORDER_WIDTH + (pieceSquare.col + offset) * squareSize,
+                    BORDER_WIDTH +
+                        (BOARD_SIZE - 1 - pieceSquare.row + offset) *
+                            squareSize,
+                    squareSize * sizeMultiplier,
+                    squareSize * sizeMultiplier
+                );
             }
         }
 
-        // draw hovered piece
+        // draw selected piece as hovering
         if (event && this.selectedPieceSquare && this.initialMouseDownCoords) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -253,8 +242,9 @@ class Chessboard {
                 (BORDER_WIDTH +
                     (BOARD_SIZE - 1 - this.selectedPieceSquare.row + offset) *
                         squareSize);
+            const piece = position.getPiece(this.selectedPieceSquare);
             this.ctx.drawImage(
-                this.assetLoader.pieces[this.selectedPieceSquare.getPiece()],
+                this.assetLoader.pieces[piece],
                 x - initialOffsetX,
                 y - initialOffsetY,
                 squareSize * sizeMultiplier,
