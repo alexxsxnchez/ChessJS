@@ -369,7 +369,7 @@ class Chessboard {
                 this.isDragging;
             if (!isSelectedPiece) {
                 this.ctx.drawImage(
-                    this.assetLoader.pieces[piece],
+                    this.assetLoader.getPieceImage(piece.type, piece.colour),
                     BORDER_WIDTH + (pieceSquare.col + offset) * squareSize,
                     BORDER_WIDTH +
                         (BOARD_SIZE - 1 - pieceSquare.row + offset) *
@@ -402,7 +402,7 @@ class Chessboard {
             const piece = position.getPiece(this.selectedPieceSquare);
             const pieceSize = squareSize * sizeMultiplier;
             this.ctx.drawImage(
-                this.assetLoader.pieces[piece],
+                this.assetLoader.getPieceImage(piece.type, piece.colour),
                 x - pieceSize / 2,
                 y - pieceSize / 2,
                 pieceSize,
@@ -452,7 +452,7 @@ class Chessboard {
             const dir = colour === PieceColour.WHITE ? 1 : -1;
             const y = BOARD_SIZE - 1 - this.promotionSquare.row + i * dir;
             this.ctx.drawImage(
-                this.assetLoader.pieces[`${pieceType}-${colour}`],
+                this.assetLoader.getPieceImage(pieceType, colour),
                 BORDER_WIDTH + (this.promotionSquare.col + offset) * squareSize,
                 BORDER_WIDTH + y * squareSize,
                 squareSize * sizeMultiplier,

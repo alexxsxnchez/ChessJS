@@ -35,24 +35,50 @@ class Game {
     }
 
     makeMove(fromSquare, toSquare, promotionType = null) {
-        const currentPosition = this.getCurrentPosition();
-        const piece = currentPosition.getPiece(fromSquare);
+        const beforeMovePosition = this.getCurrentPosition();
+        const piece = beforeMovePosition.getPiece(fromSquare);
         const move = this.#createMove(
             fromSquare,
             toSquare,
             piece,
             promotionType
         );
-        if (currentPosition.isMoveLegal(move)) {
-            const newPosition = new Position(currentPosition, move);
+        if (beforeMovePosition.isMoveLegal(move)) {
+            const newPosition = new Position(beforeMovePosition, move);
             this.history.push(newPosition);
             eventBus.emit("state::updated");
-            const gameOver = this.#checkGameStatus();
-            if (!gameOver) {
+
+            const canMove = newPosition.doLegalMovesExist();
+            const inCheck = newPosition.isKingInCheck();
+            if (canMove) {
+                if (inCheck) {
+                    eventBus.emit("game::move::check");
+                } else if (move instanceof CastleMove) {
+                    eventBus.emit("game::move::castle");
+                } else if (move instanceof PromotionMove) {
+                    eventBus.emit("game::move::promotion");
+                } else if (
+                    beforeMovePosition.getPiece(move.toSquare) ||
+                    move instanceof EnPassantMove
+                ) {
+                    eventBus.emit("game::move::capture");
+                } else {
+                    eventBus.emit("game::move::self");
+                }
                 this.#emitNextPlayerMove();
+            } else {
+                eventBus.emit("game::end");
+                if (inCheck) {
+                    eventBus.emit(
+                        "game::checkmate",
+                        beforeMovePosition.getCurrentTurn()
+                    );
+                } else {
+                    eventBus.emit("game::stalemate");
+                }
             }
         } else {
-            eventBus.emit("game::unsuccessfulMove");
+            eventBus.emit("game::move::illegal");
         }
     }
 
@@ -98,28 +124,6 @@ class Game {
             );
         }
         return new Move(fromSquare, toSquare, piece);
-    }
-
-    #checkGameStatus() {
-        const currentPosition = this.getCurrentPosition();
-        const canMove = currentPosition.doLegalMovesExist();
-        const inCheck = currentPosition.isKingInCheck();
-        if (canMove) {
-            if (inCheck) {
-                eventBus.emit("game::check");
-            }
-            return false;
-        } else {
-            if (inCheck) {
-                eventBus.emit(
-                    "game::checkmate",
-                    PieceColour.getOpposite(currentPosition.getCurrentTurn())
-                );
-            } else {
-                eventBus.emit("game::stalemate");
-            }
-            return true;
-        }
     }
 
     #emitNextPlayerMove() {
