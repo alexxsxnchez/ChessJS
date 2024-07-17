@@ -4,8 +4,8 @@ import { EnPassantMove, PromotionMove, Move } from "../move.js";
 import Square from "../square.js";
 
 class Pawn extends Piece {
-    constructor(color) {
-        super(PieceType.PAWN, color);
+    constructor(colour) {
+        super(PieceType.PAWN, colour);
     }
 
     getAvailableMoves(pieceSquare, position) {

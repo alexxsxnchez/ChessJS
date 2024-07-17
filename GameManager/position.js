@@ -1,12 +1,12 @@
-import { PieceColour, PieceType } from "../Immutable/Pieces/utils.js";
-import { CastleMove, PromotionMove, EnPassantMove } from "../Immutable/move.js";
-import Square from "../Immutable/square.js";
-import Bishop from "../Immutable/Pieces/bishop.js";
-import King from "../Immutable/Pieces/king.js";
-import Knight from "../Immutable/Pieces/knight.js";
-import Pawn from "../Immutable/Pieces/pawn.js";
-import Queen from "../Immutable/Pieces/queen.js";
-import Rook from "../Immutable/Pieces/rook.js";
+import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
+import { CastleMove, PromotionMove, EnPassantMove } from "./Immutable/move.js";
+import Square from "./Immutable/square.js";
+import Bishop from "./Immutable/Pieces/bishop.js";
+import King from "./Immutable/Pieces/king.js";
+import Knight from "./Immutable/Pieces/knight.js";
+import Pawn from "./Immutable/Pieces/pawn.js";
+import Queen from "./Immutable/Pieces/queen.js";
+import Rook from "./Immutable/Pieces/rook.js";
 
 const BOARD_SIZE = 8;
 // TODO - can be updated to remove nulls to save space
@@ -87,6 +87,7 @@ class Position {
     // isWhiteInCheck, isBlackInCheck, doLegalMovesExist
     #calculationCache;
     #currentTurn;
+    #lastMove;
     enPassantSquare;
     whiteKingsideRights;
     whiteQueensideRights;
@@ -107,6 +108,10 @@ class Position {
 
     getCurrentTurn() {
         return this.#currentTurn;
+    }
+
+    getLastMove() {
+        return this.#lastMove;
     }
 
     getPiece(square) {
@@ -131,12 +136,8 @@ class Position {
                 ? this.#whiteKingSquare
                 : this.#blackKingSquare;
 
-        const oppositeColour =
-            colour === PieceColour.WHITE
-                ? PieceColour.BLACK
-                : PieceColour.WHITE;
         for (let [opponentSquare, opponentPiece] of this.getPieceSquares(
-            oppositeColour
+            PieceColour.getOpposite(colour)
         )) {
             const attackingMoves = opponentPiece.getAttackingMoves(
                 opponentSquare,
@@ -218,6 +219,7 @@ class Position {
             doLegalMovesExist: true,
         };
         this.#currentTurn = PieceColour.WHITE;
+        this.#lastMove = null;
         this.enPassantSquare = null;
         this.whiteKingsideRights = true;
         this.whiteQueensideRights = true;
@@ -233,17 +235,19 @@ class Position {
             isBlackInCheck: null,
             doLegalMovesExist: null,
         };
-        this.#currentTurn =
-            oldPosition.#currentTurn === PieceColour.WHITE
-                ? PieceColour.BLACK
-                : PieceColour.WHITE;
+        this.#currentTurn = PieceColour.getOpposite(oldPosition.#currentTurn);
+        this.#lastMove = move;
         this.enPassantSquare = this.#getEnPassantSquare(move);
         this.#updateCastlingRights(oldPosition, move);
 
         this.#pieceLocations = new PieceMap();
 
         if (move instanceof PromotionMove) {
-            this.#createPiece(move.promotionType, move.colour, move.toSquare);
+            this.#createPiece(
+                move.promotionType,
+                move.piece.colour,
+                move.toSquare
+            );
         } else {
             this.#createPiece(
                 move.piece.type,
@@ -303,6 +307,16 @@ class Position {
                     this.blackKingsideRights = false;
                 }
             }
+        }
+        // if any piece on the board move into rook squares (captures rook)
+        if (move.toSquare.row === 0 && move.toSquare.col === 0) {
+            this.whiteQueensideRights = false;
+        } else if (move.toSquare.row === 0 && move.toSquare.col === 7) {
+            this.whiteKingsideRights = false;
+        } else if (move.toSquare.row === 7 && move.toSquare.col === 0) {
+            this.blackQueensideRights = false;
+        } else if (move.toSquare.row === 7 && move.toSquare.col === 7) {
+            this.blackKingsideRights = false;
         }
     }
 

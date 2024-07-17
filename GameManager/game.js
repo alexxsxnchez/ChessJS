@@ -1,6 +1,5 @@
 import eventBus from "../Common/eventbus.js";
 import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
-import GameState from "./State/gamestate.js";
 import {
     Move,
     PromotionMove,
@@ -8,6 +7,7 @@ import {
     CastleMove,
 } from "./Immutable/move.js";
 import Square from "./Immutable/square.js";
+import { Position } from "./position.js";
 
 const GameType = Object.freeze({
     HUMAN_VS_HUMAN: "human_vs_human",
@@ -18,35 +18,50 @@ const GameType = Object.freeze({
 
 class Game {
     constructor() {
-        this.started = false;
-        this.gameState = new GameState();
+        this.history = [];
     }
 
     start(gameType = GameType.HUMAN_VS_HUMAN) {
         this.gameType = gameType;
-        this.started = true;
+        this.history = [new Position()];
+        eventBus.emit("state::updated");
         eventBus.emit("game::start");
 
         this.#emitNextPlayerMove();
     }
 
-    restart(gameType = GameType.HUMAN_VS_HUMAN) {
-        this.started = false;
-        this.gameState = new GameState();
-        eventBus.emit("state::updated");
-        this.start(gameType);
+    getCurrentPosition() {
+        return this.history.at(-1);
     }
 
-    makeMove(fromSquare, toSquare) {
-        const piece = this.gameState.getCurrentPosition().getPiece(fromSquare);
-        const move = this.#createMove(fromSquare, toSquare, piece);
-        const successful = this.gameState.makeMove(move);
-        if (successful) {
+    makeMove(fromSquare, toSquare, promotionType = null) {
+        const currentPosition = this.getCurrentPosition();
+        const piece = currentPosition.getPiece(fromSquare);
+        const move = this.#createMove(
+            fromSquare,
+            toSquare,
+            piece,
+            promotionType
+        );
+        if (currentPosition.isMoveLegal(move)) {
+            const newPosition = new Position(currentPosition, move);
+            this.history.push(newPosition);
             eventBus.emit("state::updated");
-            this.gameState.checkGameStatus();
-            this.#emitNextPlayerMove();
+            const gameOver = this.#checkGameStatus();
+            if (!gameOver) {
+                this.#emitNextPlayerMove();
+            }
         } else {
             eventBus.emit("game::unsuccessfulMove");
+        }
+    }
+
+    undoMove() {
+        // always leave the starting position
+        if (this.history.length >= 2) {
+            this.history.pop();
+            eventBus.emit("state::updated");
+            this.#emitNextPlayerMove();
         }
     }
 
@@ -73,7 +88,7 @@ class Game {
         }
         if (
             piece.type === PieceType.PAWN &&
-            toSquare.equals(this.gameState.getCurrentPosition().enPassantSquare)
+            toSquare.equals(this.getCurrentPosition().enPassantSquare)
         ) {
             return new EnPassantMove(
                 fromSquare,
@@ -85,10 +100,30 @@ class Game {
         return new Move(fromSquare, toSquare, piece);
     }
 
+    #checkGameStatus() {
+        const currentPosition = this.getCurrentPosition();
+        const canMove = currentPosition.doLegalMovesExist();
+        const inCheck = currentPosition.isKingInCheck();
+        if (canMove) {
+            if (inCheck) {
+                eventBus.emit("game::check");
+            }
+            return false;
+        } else {
+            if (inCheck) {
+                eventBus.emit(
+                    "game::checkmate",
+                    PieceColour.getOpposite(currentPosition.getCurrentTurn())
+                );
+            } else {
+                eventBus.emit("game::stalemate");
+            }
+            return true;
+        }
+    }
+
     #emitNextPlayerMove() {
-        const currentTurn = this.gameState
-            .getCurrentPosition()
-            .getCurrentTurn();
+        const currentTurn = this.getCurrentPosition().getCurrentTurn();
         switch (this.gameType) {
             case GameType.HUMAN_VS_HUMAN:
                 eventBus.emit("game::humanMove", currentTurn);

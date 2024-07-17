@@ -30,15 +30,16 @@ canvas {
 
 #controlsContainer {
     /* min-width: 200px; */
-    display: block;
     flex-grow: 1;
     background-color: lightgray;
     display: flex;
+    flex-direction: column;
+    gap: 10px;
     justify-content: center;
     align-items: center;
 }
 
-#startButton {
+#controlsContainer > button {
     font-size: 32px;
     border-radius: 5px;
 }

@@ -6,6 +6,19 @@ class SidePanel {
         startButton.addEventListener("click", () => {
             eventBus.emit("sidepanel::start");
         });
+        const undoButton = document.getElementById("undoButton");
+        undoButton.addEventListener("click", () => {
+            eventBus.emit("sidepanel::undo");
+        });
+        const highlightMovesCheckbox =
+            document.getElementById("highlightCheckbox");
+        highlightMovesCheckbox.checked = true;
+        highlightMovesCheckbox.addEventListener("click", () => {
+            eventBus.emit(
+                "sidepanel::highlightChecked",
+                highlightMovesCheckbox.checked
+            );
+        });
     }
 }
 

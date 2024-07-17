@@ -4,8 +4,8 @@ import { Move } from "../move.js";
 import Square from "../square.js";
 
 class Knight extends Piece {
-    constructor(color) {
-        super(PieceType.KNIGHT, color);
+    constructor(colour) {
+        super(PieceType.KNIGHT, colour);
     }
 
     getAvailableMoves(pieceSquare, position) {

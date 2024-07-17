@@ -10,16 +10,21 @@ function main() {
     const sidepanel = new SidePanel();
 
     let chessboard = null;
-    let game = null;
+    let game = new Game();
     eventBus.on("assets::ready", () => {
-        game = new Game();
         chessboard = new Chessboard(assetLoader, game);
         game.start();
     });
 
     eventBus.on("sidepanel::start", () => {
         if (game) {
-            game.restart();
+            game.start();
+        }
+    });
+
+    eventBus.on("sidepanel::undo", () => {
+        if (game) {
+            game.undoMove();
         }
     });
 

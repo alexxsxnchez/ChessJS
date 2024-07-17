@@ -2,8 +2,8 @@ import Piece from "./piece.js";
 import { PieceType } from "./utils.js";
 
 class Rook extends Piece {
-    constructor(color) {
-        super(PieceType.ROOK, color);
+    constructor(colour) {
+        super(PieceType.ROOK, colour);
     }
 
     getAvailableMoves(pieceSquare, position) {
