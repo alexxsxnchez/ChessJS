@@ -90,7 +90,7 @@ class Chessboard {
                 const currentPosition = this.game.getCurrentPosition();
                 const piece = currentPosition.getPiece(pieceSquare);
                 this.highlightSquares = currentPosition
-                    .getLegalMoves(pieceSquare, piece)
+                    .getLegalMovesForPiece(pieceSquare, piece)
                     .map((move) => move.toSquare);
                 this.draw(e);
             }
@@ -266,7 +266,7 @@ class Chessboard {
         }
 
         // draw last move
-        const lastMove = this.game.getCurrentPosition().getLastMove();
+        const lastMove = this.game.getCurrentPosition().lastMove;
         if (lastMove) {
             this.ctx.fillStyle = "rgba(245, 204, 42, 0.5)";
             this.ctx.fillRect(
@@ -441,7 +441,7 @@ class Chessboard {
 
         const sizeMultiplier = 0.93;
         const offset = (1 - sizeMultiplier) / 2;
-        const colour = this.game.getCurrentPosition().getCurrentTurn();
+        const colour = this.game.getCurrentPosition().currentTurn;
 
         [
             PieceType.QUEEN,

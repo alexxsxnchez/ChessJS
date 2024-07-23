@@ -1,5 +1,5 @@
 import eventBus from "./Common/eventbus.js";
-import { Game } from "./GameManager/game.js";
+import { Game, GameType } from "./GameManager/game.js";
 import SidePanel from "./UI/sidepanel.js";
 import AssetLoader from "./UI/assetLoader.js";
 import Chessboard from "./UI/chessboard.js";
@@ -16,12 +16,12 @@ function main() {
     eventBus.on("assets::ready", () => {
         chessboard = new Chessboard(assetLoader, game);
         soundManager = new SoundManager(assetLoader);
-        game.start();
+        game.start(GameType.HUMAN_VS_AI);
     });
 
     eventBus.on("sidepanel::start", () => {
         if (game) {
-            game.start();
+            game.start(GameType.HUMAN_VS_AI);
         }
     });
 

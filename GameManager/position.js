@@ -8,6 +8,7 @@ import Pawn from "./Immutable/Pieces/pawn.js";
 import Queen from "./Immutable/Pieces/queen.js";
 import Rook from "./Immutable/Pieces/rook.js";
 
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const BOARD_SIZE = 8;
 // TODO - can be updated to remove nulls to save space
 const INITIAL_PIECES = [
@@ -38,43 +39,43 @@ const INITIAL_PIECES = [
 
 // helper data structure
 class PieceMap {
-    #whitePieces;
-    #blackPieces;
+    // whitePieces;
+    // blackPieces;
     constructor() {
-        this.#whitePieces = new Map();
-        this.#blackPieces = new Map();
+        this.whitePieces = new Map();
+        this.blackPieces = new Map();
     }
 
     add(square, piece) {
         if (piece.colour === PieceColour.WHITE) {
-            this.#whitePieces.set(square.toString(), piece);
+            this.whitePieces.set(square.toString(), piece);
         } else {
-            this.#blackPieces.set(square.toString(), piece);
+            this.blackPieces.set(square.toString(), piece);
         }
     }
 
     get(square) {
         return (
-            this.#whitePieces.get(square.toString()) ||
-            this.#blackPieces.get(square.toString()) ||
+            this.whitePieces.get(square.toString()) ||
+            this.blackPieces.get(square.toString()) ||
             null
         );
     }
 
     remove(square) {
-        this.#whitePieces.delete(square.toString());
-        this.#blackPieces.delete(square.toString());
+        this.whitePieces.delete(square.toString());
+        this.blackPieces.delete(square.toString());
     }
 
     getEntries(colour = null) {
         const entries = [];
         if (!colour || colour === PieceColour.WHITE) {
-            for (let [squareString, piece] of this.#whitePieces.entries()) {
+            for (let [squareString, piece] of this.whitePieces.entries()) {
                 entries.push([Square.fromString(squareString), piece]);
             }
         }
         if (!colour || colour === PieceColour.BLACK) {
-            for (let [squareString, piece] of this.#blackPieces.entries()) {
+            for (let [squareString, piece] of this.blackPieces.entries()) {
                 entries.push([Square.fromString(squareString), piece]);
             }
         }
@@ -85,56 +86,89 @@ class PieceMap {
 class Position {
     // calculationCache used to cache expensive operations like:
     // isWhiteInCheck, isBlackInCheck, doLegalMovesExist
-    #calculationCache;
-    #currentTurn;
-    #lastMove;
-    enPassantSquare;
-    whiteKingsideRights;
-    whiteQueensideRights;
-    blackKingsideRights;
-    blackQueensideRights;
-    #pieceLocations;
-    #whiteKingSquare;
-    #blackKingSquare;
+    // calculationCache;
+    // currentTurn;
+    // lastMove;
+    // enPassantSquare;
+    // whiteKingsideRights;
+    // whiteQueensideRights;
+    // blackKingsideRights;
+    // blackQueensideRights;
+    // pieceLocations;
+    // whiteKingSquare;
+    // blackKingSquare;
     constructor(oldPosition = null, move = null) {
-        if (!oldPosition && !move) {
+        if (typeof oldPosition === "string") {
+            this.#createFromFEN(oldPosition);
+        } else if (!oldPosition && !move) {
             this.#createStarting();
         } else if (oldPosition && move) {
             this.#createFromOldPosition(oldPosition, move);
+        } else if (oldPosition && !move) {
+            // copy from oldPosition
+            this.calculationCache = oldPosition.calculationCache;
+            this.currentTurn = oldPosition.currentTurn;
+            //this.lastMove =
+            this.enPassantSquare = oldPosition.enPassantSquare
+                ? new Square(
+                      oldPosition.enPassantSquare.row,
+                      oldPosition.enPassantSquare.col
+                  )
+                : null;
+            this.whiteKingsideRights = oldPosition.whiteKingsideRights;
+            this.whiteQueensideRights = oldPosition.whiteQueensideRights;
+            this.blackKingsideRights = oldPosition.blackKingsideRights;
+            this.blackQueensideRights = oldPosition.blackQueensideRights;
+            this.pieceLocations = new PieceMap();
+            for (let [
+                squareString,
+                piece,
+            ] of oldPosition.pieceLocations.whitePieces.entries()) {
+                this.#createPiece(
+                    piece.type,
+                    piece.colour,
+                    Square.fromString(squareString)
+                );
+            }
+            for (let [
+                squareString,
+                piece,
+            ] of oldPosition.pieceLocations.blackPieces.entries()) {
+                this.#createPiece(
+                    piece.type,
+                    piece.colour,
+                    Square.fromString(squareString)
+                );
+            }
+
+            this.whiteKingSquare = oldPosition.whiteKingSquare;
+            this.blackKingSquare = oldPosition.blackKingSquare;
         } else {
             throw new Error("invalid position input");
         }
     }
 
-    getCurrentTurn() {
-        return this.#currentTurn;
-    }
-
-    getLastMove() {
-        return this.#lastMove;
-    }
-
     getPiece(square) {
-        return this.#pieceLocations.get(square);
+        return this.pieceLocations.get(square);
     }
 
     getPieceSquares(colour = null) {
-        return this.#pieceLocations.getEntries(colour);
+        return this.pieceLocations.getEntries(colour);
     }
 
-    isKingInCheck(colour = this.#currentTurn) {
+    isKingInCheck(colour = this.currentTurn) {
         const cacheValue =
             colour === PieceColour.WHITE
-                ? this.#calculationCache.isWhiteInCheck
-                : this.#calculationCache.isBlackInCheck;
+                ? this.calculationCache.isWhiteInCheck
+                : this.calculationCache.isBlackInCheck;
         if (cacheValue !== null) {
             return cacheValue;
         }
 
         const kingSquare =
             colour === PieceColour.WHITE
-                ? this.#whiteKingSquare
-                : this.#blackKingSquare;
+                ? this.whiteKingSquare
+                : this.blackKingSquare;
 
         for (let [opponentSquare, opponentPiece] of this.getPieceSquares(
             PieceColour.getOpposite(colour)
@@ -146,9 +180,9 @@ class Position {
             for (let attackingMove of attackingMoves) {
                 if (attackingMove.toSquare.equals(kingSquare)) {
                     if (colour === PieceColour.WHITE) {
-                        this.#calculationCache.isWhiteInCheck = true;
+                        this.calculationCache.isWhiteInCheck = true;
                     } else {
-                        this.#calculationCache.isBlackInCheck = true;
+                        this.calculationCache.isBlackInCheck = true;
                     }
                     return true;
                 }
@@ -156,15 +190,15 @@ class Position {
         }
 
         if (colour === PieceColour.WHITE) {
-            this.#calculationCache.isWhiteInCheck = false;
+            this.calculationCache.isWhiteInCheck = false;
         } else {
-            this.#calculationCache.isBlackInCheck = false;
+            this.calculationCache.isBlackInCheck = false;
         }
         return false;
     }
 
     isMoveLegal(move) {
-        if (move.piece.colour === this.#currentTurn) {
+        if (move.piece.colour === this.currentTurn) {
             const availableMoves = move.piece.getAvailableMoves(
                 move.fromSquare,
                 this
@@ -180,27 +214,27 @@ class Position {
     }
 
     doLegalMovesExist() {
-        if (this.#calculationCache.doLegalMovesExist !== null) {
-            return this.#calculationCache.doLegalMovesExist;
+        if (this.calculationCache.doLegalMovesExist !== null) {
+            return this.calculationCache.doLegalMovesExist;
         }
 
         for (let [pieceSquare, piece] of this.getPieceSquares(
-            this.#currentTurn
+            this.currentTurn
         )) {
             const availableMoves = piece.getAvailableMoves(pieceSquare, this);
             for (let availableMove of availableMoves) {
                 const newPosition = new Position(this, availableMove);
                 if (!newPosition.isKingInCheck(piece.colour)) {
-                    this.#calculationCache.doLegalMovesExist = true;
+                    this.calculationCache.doLegalMovesExist = true;
                     return true;
                 }
             }
         }
-        this.#calculationCache.doLegalMovesExist = false;
+        this.calculationCache.doLegalMovesExist = false;
         return false;
     }
 
-    getLegalMoves(pieceSquare, piece) {
+    getLegalMovesForPiece(pieceSquare, piece) {
         const legalMoves = [];
         const moves = piece.getAvailableMoves(pieceSquare, this);
         for (let move of moves) {
@@ -212,35 +246,45 @@ class Position {
         return legalMoves;
     }
 
+    getLegalMoves() {
+        const legalMoves = [];
+        for (let [pieceSquare, piece] of this.getPieceSquares(
+            this.currentTurn
+        )) {
+            legalMoves.push(...this.getLegalMovesForPiece(pieceSquare, piece));
+        }
+        return legalMoves;
+    }
+
     #createStarting() {
-        this.#calculationCache = {
+        this.calculationCache = {
             isWhiteInCheck: false,
             isBlackInCheck: false,
             doLegalMovesExist: true,
         };
-        this.#currentTurn = PieceColour.WHITE;
-        this.#lastMove = null;
+        this.currentTurn = PieceColour.WHITE;
+        this.lastMove = null;
         this.enPassantSquare = null;
         this.whiteKingsideRights = true;
         this.whiteQueensideRights = true;
         this.blackKingsideRights = true;
         this.blackQueensideRights = true;
-        this.#pieceLocations = new PieceMap();
+        this.pieceLocations = new PieceMap();
         this.#initializeBoard();
     }
 
     #createFromOldPosition(oldPosition, move) {
-        this.#calculationCache = {
+        this.calculationCache = {
             isWhiteInCheck: null,
             isBlackInCheck: null,
             doLegalMovesExist: null,
         };
-        this.#currentTurn = PieceColour.getOpposite(oldPosition.#currentTurn);
-        this.#lastMove = move;
+        this.currentTurn = PieceColour.getOpposite(oldPosition.currentTurn);
+        this.lastMove = move;
         this.enPassantSquare = this.#getEnPassantSquare(move);
         this.#updateCastlingRights(oldPosition, move);
 
-        this.#pieceLocations = new PieceMap();
+        this.pieceLocations = new PieceMap();
 
         if (move instanceof PromotionMove) {
             this.#createPiece(
@@ -362,9 +406,9 @@ class Position {
             case PieceType.KING:
                 piece = new King(colour);
                 if (colour === PieceColour.WHITE) {
-                    this.#whiteKingSquare = square;
+                    this.whiteKingSquare = square;
                 } else {
-                    this.#blackKingSquare = square;
+                    this.blackKingSquare = square;
                 }
                 break;
             case PieceType.KNIGHT:
@@ -382,9 +426,180 @@ class Position {
             default:
                 throw new Error("invalid type");
         }
-        this.#pieceLocations.add(square, piece);
+        this.pieceLocations.add(square, piece);
         return piece;
+    }
+
+    #createFromFEN(fen) {
+        this.calculationCache = {
+            isWhiteInCheck: false,
+            isBlackInCheck: false,
+            doLegalMovesExist: true,
+        };
+        this.lastMove = null;
+        this.pieceLocations = new PieceMap();
+
+        const components = fen.split(" ");
+        const pieces = components[0];
+        let row = 7;
+        let col = 0;
+        for (let i = 0; i <= pieces.length; i++) {
+            const ch = pieces[i];
+            switch (ch) {
+                case "p":
+                    this.#createPiece(
+                        PieceType.PAWN,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "n":
+                    this.#createPiece(
+                        PieceType.KNIGHT,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "b":
+                    this.#createPiece(
+                        PieceType.BISHOP,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "r":
+                    this.#createPiece(
+                        PieceType.ROOK,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "q":
+                    this.#createPiece(
+                        PieceType.QUEEN,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "k":
+                    this.#createPiece(
+                        PieceType.KING,
+                        PieceColour.BLACK,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "P":
+                    this.#createPiece(
+                        PieceType.PAWN,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "N":
+                    this.#createPiece(
+                        PieceType.KNIGHT,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "B":
+                    this.#createPiece(
+                        PieceType.BISHOP,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "R":
+                    this.#createPiece(
+                        PieceType.ROOK,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "Q":
+                    this.#createPiece(
+                        PieceType.QUEEN,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "K":
+                    this.#createPiece(
+                        PieceType.KING,
+                        PieceColour.WHITE,
+                        new Square(row, col)
+                    );
+                    col++;
+                    break;
+                case "/":
+                    row--;
+                    col = 0;
+                    break;
+                case "1":
+                case "2":
+                case "3":
+                case "4":
+                case "5":
+                case "6":
+                case "7":
+                case "8":
+                    col += parseInt(ch);
+                    //row += Math.floor((col + parseInt(ch)) / 8);
+                    break;
+            }
+        }
+
+        this.currentTurn = PieceColour.WHITE;
+        if (components[1] === "b") {
+            this.currentTurn = PieceColour.BLACK;
+        }
+
+        this.whiteKingsideRights = false;
+        this.whiteQueensideRights = false;
+        this.blackKingsideRights = false;
+        this.blackQueensideRights = false;
+        for (let ch of components[2]) {
+            if (ch === "K") {
+                this.whiteKingsideRights = true;
+            } else if (ch === "Q") {
+                this.whiteQueensideRights = true;
+            } else if (ch === "k") {
+                this.blackKingsideRights = true;
+            } else if (ch === "q") {
+                this.blackQueensideRights = true;
+            }
+        }
+
+        if (components[3] === "-") {
+            this.enPassantSquare = null;
+        } else {
+            const col = components[3].charCodeAt(0) - 97;
+            const row = components[3][1] - 1;
+            this.enPassantSquare = new Square(row, col);
+        }
+
+        /*
+        // half-move clock (reset every pawn move)
+        this.halfMoveClock = parseInt(components[4]);
+
+        // full-move counter (doesn't reset)
+        this.gamePly = parseInt(components[5]) * 2;
+        if(this.currentTurn === PieceColour.BLACK) {
+            this.gamePly--;
+        }
+        */
     }
 }
 
-export { Position, Square };
+export default Position;

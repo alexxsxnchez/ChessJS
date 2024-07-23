@@ -1,3 +1,5 @@
+import { PieceType } from "./Pieces/utils.js";
+
 class Move {
     constructor(fromSquare, toSquare, piece) {
         this.fromSquare = fromSquare;
@@ -12,6 +14,35 @@ class Move {
             this.toSquare.equals(other.toSquare) &&
             this.piece.equals(other.piece)
         );
+    }
+
+    toJSON() {
+        let s = "";
+        switch (this.piece.type) {
+            case PieceType.KNIGHT:
+                s += "N";
+                break;
+            case PieceType.BISHOP:
+                s += "B";
+                break;
+            case PieceType.ROOK:
+                s += "R";
+                break;
+            case PieceType.QUEEN:
+                s += "Q";
+                break;
+            case PieceType.KING:
+                s += "K";
+                break;
+        }
+        const fromFile = String.fromCharCode(this.fromSquare.col + 65);
+        const toFile = String.fromCharCode(this.toSquare.col + 65);
+        s +=
+            fromFile +
+            (this.fromSquare.row + 1) +
+            toFile +
+            (this.toSquare.row + 1);
+        return s;
     }
 }
 

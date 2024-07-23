@@ -2,7 +2,7 @@ import Piece from "./piece.js";
 import { PieceColour, PieceType } from "./utils.js";
 import { CastleMove, Move } from "../move.js";
 import Square from "../square.js";
-import { Position } from "../../position.js";
+import Position from "../../position.js";
 
 class King extends Piece {
     constructor(colour) {

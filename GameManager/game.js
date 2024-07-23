@@ -7,7 +7,8 @@ import {
     CastleMove,
 } from "./Immutable/move.js";
 import Square from "./Immutable/square.js";
-import { Position } from "./position.js";
+import Position from "./position.js";
+import Engine from "../Engine/engine.js";
 
 const GameType = Object.freeze({
     HUMAN_VS_HUMAN: "human_vs_human",
@@ -22,8 +23,20 @@ class Game {
     }
 
     start(gameType = GameType.HUMAN_VS_HUMAN) {
+        if (this.engine) {
+            this.engine.terminate();
+        }
+        if (
+            gameType === GameType.HUMAN_VS_AI ||
+            gameType === GameType.AI_VS_HUMAN ||
+            gameType === GameType.AI_VS_AI
+        ) {
+            this.engine = new Engine(this);
+        }
+
         this.gameType = gameType;
-        this.history = [new Position()];
+        const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        this.history = [new Position(fen)];
         eventBus.emit("state::updated");
         eventBus.emit("game::start");
 
@@ -71,7 +84,7 @@ class Game {
                 if (inCheck) {
                     eventBus.emit(
                         "game::checkmate",
-                        beforeMovePosition.getCurrentTurn()
+                        beforeMovePosition.currentTurn
                     );
                 } else {
                     eventBus.emit("game::stalemate");
@@ -85,7 +98,23 @@ class Game {
     undoMove() {
         // always leave the starting position
         if (this.history.length >= 2) {
+            const currentTurn = this.getCurrentPosition().currentTurn;
             this.history.pop();
+            if (
+                this.gameType === GameType.HUMAN_VS_AI ||
+                this.gameType === GameType.AI_VS_HUMAN
+            ) {
+                this.engine.cancel();
+                if (
+                    (this.history.length >= 2 &&
+                        this.gameType === GameType.HUMAN_VS_AI &&
+                        currentTurn === PieceColour.WHITE) ||
+                    (this.gameType === GameType.AI_VS_HUMAN &&
+                        currentTurn === PieceColour.BLACK)
+                ) {
+                    this.history.pop();
+                }
+            }
             eventBus.emit("state::updated");
             this.#emitNextPlayerMove();
         }
@@ -127,24 +156,25 @@ class Game {
     }
 
     #emitNextPlayerMove() {
-        const currentTurn = this.getCurrentPosition().getCurrentTurn();
+        const currentPosition = this.getCurrentPosition();
+        const currentTurn = currentPosition.currentTurn;
         switch (this.gameType) {
             case GameType.HUMAN_VS_HUMAN:
                 eventBus.emit("game::humanMove", currentTurn);
                 break;
             case GameType.AI_VS_AI:
-                eventBus.emit("game::aiMove");
+                eventBus.emit("game::aiMove", currentPosition);
                 break;
             case GameType.HUMAN_VS_AI:
                 if (currentTurn === PieceColour.WHITE) {
                     eventBus.emit("game::humanMove", currentTurn);
                 } else {
-                    eventBus.emit("game::aiMove");
+                    eventBus.emit("game::aiMove", currentPosition);
                 }
                 break;
             case GameType.AI_VS_HUMAN:
                 if (currentTurn === PieceColour.WHITE) {
-                    eventBus.emit("game::aiMove");
+                    eventBus.emit("game::aiMove", currentPosition);
                 } else {
                     eventBus.emit("game::humanMove", currentTurn);
                 }

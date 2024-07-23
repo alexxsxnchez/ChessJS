@@ -1,0 +1,31 @@
+Alpha-beta
+    - alpha is lowerbound, beta is upperbound
+    
+    - alpha is the maximum score the maximizing player can be assured of. beta is the minimum score the minimizing player can be assured of. When alpha >= beta, we can return prune (return beta if maximizing or return alpha if minimizing) because there will be no other move that is better for the maximizing player that the minimizing player will allow (or vice versa)
+    
+    - In negamax, we can think of alpha as the best score the current player can be assured of and beta as the best score the opposing player can be assured of. If a node is higher than beta, it means the opponent will avoid this node, since his guaranteed score (alpha of the parent node) is already greater. As a result, a beta-cutoff occurs and the value returned is a lower bound
+    
+    - Fail-low: indicates that this position was not good enough for us. This position will not be reached, because we can reach a better position. We will not make a move that will allow the opponent to put us in this position.
+
+    - Fail-high: indicates that this positino is "too good". This means the opponent has found some way, already found by the search, to avoid this position, so there is no need to search any successors. A fail-high is associated with a beta-cutoff
+
+    - Fail-hard: The score is always kept within the bounds of alpha and beta. Simple.
+
+    - Fail-soft: The returned score may be lower than alpha or greater than beta. Can give more information.
+
+
+
+Transposition Table
+    - Apparently: "In Stockfish, the position is evaluated for a draw prior to querying the transposition table, and the score from the transposition table is also not returned if we are within 10 ply (so 5 turns) of the 50-move rule being relevant. It is important to consider these rules, but it is easy enough to handle them separately so that the bulk of the search can ignore these exceptions"
+
+
+Move ordering:
+    - Don't have to sort the whole move list up front, can just do a partial selection sort after every move is picked, to get next best move
+    Order:
+    1. First try the best move learned from previous depths (PV - principle variation)
+    2. Then other hash moves from TT table that fail high??
+    3. Next, winning capture moves usually ordered by highest victim - lowest attacker scores. MVV-LVA (most valuable victim - least valuable attacker) or SEE (static-exchange evaluation) can be used.
+    4. Equal capture moves
+    5. Killer moves - quiet moves that caused a beta-cutoff in a sibling cut-node or any other earlier branch in the tree with the same ply distance to the root
+    6. Non-captures sorted by history heuristic
+    7. Losing captures -> some programs put this ahead of non-captures since they can be tactical
