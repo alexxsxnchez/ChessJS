@@ -1,15 +1,15 @@
 const PieceType = Object.freeze({
-    PAWN: "pawn",
-    ROOK: "rook",
-    KNIGHT: "knight",
-    BISHOP: "bishop",
-    QUEEN: "queen",
-    KING: "king",
+    PAWN: 0,
+    ROOK: 1,
+    KNIGHT: 2,
+    BISHOP: 3,
+    QUEEN: 4,
+    KING: 5,
 });
 
 const PieceColour = Object.freeze({
-    WHITE: "white",
-    BLACK: "black",
+    WHITE: 0,
+    BLACK: 1,
 
     getOpposite(colour) {
         return colour === PieceColour.WHITE

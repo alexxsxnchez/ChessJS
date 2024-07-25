@@ -110,6 +110,7 @@ class ZobristTable {
 
         // en passant
         if (oldPosition.enPassantSquare) {
+            // TODO: squares are now numbers including 0 so can't IF
             loH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][0];
             hiH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][1];
         }

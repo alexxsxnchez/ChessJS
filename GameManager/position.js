@@ -600,6 +600,10 @@ class Position {
         }
         */
     }
+
+    generateFEN() {
+        return "";
+    }
 }
 
 export default Position;

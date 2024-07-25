@@ -25,14 +25,14 @@ class AssetLoader {
     #loadPieceImages() {
         let pieceCounter = 0;
         const pieceTypes = [
-            PieceType.PAWN,
-            PieceType.ROOK,
-            PieceType.KNIGHT,
-            PieceType.BISHOP,
-            PieceType.QUEEN,
-            PieceType.KING,
+            "pawn",
+            "rook",
+            "knight",
+            "bishop",
+            "queen",
+            "king",
         ];
-        const colours = [PieceColour.WHITE, PieceColour.BLACK];
+        const colours = ["white", "black"];
         pieceTypes.forEach((pieceType) => {
             colours.forEach((colour) => {
                 const img = new Image();
