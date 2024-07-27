@@ -1,4 +1,3 @@
-import Position from "../GameManager/position.js";
 import ZobristTable from "./zobrist.js";
 import {
     TranspositionTable,
@@ -7,8 +6,9 @@ import {
     TranspositionEntry,
 } from "./transposition.js";
 import evaluate from "./evaluation.js";
-import { EnPassantMove, PromotionMove } from "../GameManager/Immutable/move.js";
 import { PieceType } from "../GameManager/Immutable/Pieces/utils.js";
+import * as moveGen from "../GameManager/bbmovegen.js";
+import { MoveType } from "../GameManager/Immutable/bbMove.js";
 
 class Search {
     constructor() {
@@ -63,8 +63,8 @@ class Search {
         return bestMove;
     }
 
-    #negamax(currentPosition, depth, ply, alpha, beta, pvLine) {
-        const [loHash, hiHash] = this.zobristTable.computeHash(currentPosition);
+    #negamax(position, depth, ply, alpha, beta, pvLine) {
+        const [loHash, hiHash] = this.zobristTable.computeHash(position);
         const ttEntry = this.transpositionTable.get(loHash, hiHash);
 
         // could check for legality in rare case a whole different pos was stored here
@@ -93,45 +93,45 @@ class Search {
             // }
         }
 
-        // if (!currentPosition.doLegalMovesExist()) {
-        //     if (currentPosition.isKingInCheck()) {
-        //         // checkmate
-        //         return -100000 + ply;
-        //     } else {
-        //         // stalemate
-        //         return 0;
-        //     }
-        // }
-
-        if (depth === 0 || !currentPosition.doLegalMovesExist()) {
-            return this.#qSearch(currentPosition, ply, alpha, beta, pvLine);
+        if (depth === 0) {
+            return this.#qSearch(position, alpha, beta, pvLine);
         }
 
         let bestScore = -Infinity;
         let bestMove = null;
         let ttFlag = TTFlag.ALPHA; // assume this node is
-        const legalMoves = currentPosition.getLegalMoves();
+        const moves = moveGen.generatePseudoLegal(position);
 
         const moveScores = this.#scoreMoves(
-            currentPosition,
-            legalMoves,
+            position,
+            moves,
             pvLine.at(0),
             ttEntry?.move
         );
 
-        for (let i = 0; i < legalMoves.length; i++) {
-            this.#orderMoves(i, legalMoves, moveScores);
-            const move = legalMoves[i];
+        let legalMoves = 0;
+
+        for (let i = 0; i < moves.length; i++) {
+            this.#orderMoves(i, moves, moveScores);
+            const move = moves[i];
             const childPVLine = [];
-            const newPosition = new Position(currentPosition, move);
+
+            if (!position.makeMove(move)) {
+                position.undoMove(move);
+                continue;
+            }
+
+            legalMoves++;
+
             const score = -this.#negamax(
-                newPosition,
+                position,
                 depth - 1,
                 ply + 1,
                 -beta,
                 -alpha,
                 childPVLine
             );
+            position.undoMove(move);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -148,6 +148,16 @@ class Search {
                 pvLine.splice(0, pvLine.length, move, ...childPVLine);
                 alpha = score;
                 ttFlag = TTFlag.EXACT;
+            }
+        }
+
+        if (legalMoves === 0) {
+            if (position.isKingInCheck()) {
+                // checkmate
+                return -10000 + ply;
+            } else {
+                // stalemate
+                return 0;
             }
         }
 
@@ -177,11 +187,10 @@ class Search {
 
     // TODO: qSearch doesn't know what checkmate/stalemate is!!
     // forcing checks that lead to checkmate beyond a bit of depth, the engine currently can't see, even though qSearch should find that!
-    #qSearch(currentPosition, ply, alpha, beta, pvLine) {
-        // NOTE: evaluate must return score relative to who is moving (positive if good for who is moving, etc.)
-        let bestScore = evaluate(currentPosition, ply);
+    #qSearch(position, alpha, beta, pvLine) {
+        let bestScore = evaluate(position);
 
-        const inCheck = currentPosition.isKingInCheck();
+        const inCheck = position.isKingInCheck();
         if (!inCheck && bestScore >= beta) {
             // beta cutoff
             return bestScore;
@@ -191,41 +200,26 @@ class Search {
 
         let moves = [];
         if (inCheck) {
-            moves = currentPosition.getLegalMoves();
+            moves = moveGen.generatePseudoLegal(position);
         } else {
-            // get only attacking and promotion moves
-            // TODO: do this more efficiently
-            const legalMoves = currentPosition.getLegalMoves();
-            legalMoves.forEach((legalMove) => {
-                if (
-                    legalMove instanceof PromotionMove ||
-                    legalMove instanceof EnPassantMove ||
-                    currentPosition.getPiece(legalMove.toSquare)
-                ) {
-                    moves.push(legalMove);
-                }
-            });
+            moves = moveGen.generateCapturesAndPromotions(position);
         }
 
-        const moveScores = this.#scoreMoves(
-            currentPosition,
-            moves,
-            pvLine.at(0)
-        );
+        const moveScores = this.#scoreMoves(position, moves, pvLine.at(0));
         for (let i = 0; i < moves.length; i++) {
             this.#orderMoves(i, moves, moveScores);
 
             const move = moves[i];
 
             const childPVLine = [];
-            const newPosition = new Position(currentPosition, move);
-            const score = -this.#qSearch(
-                newPosition,
-                ply + 1,
-                -beta,
-                -alpha,
-                childPVLine
-            );
+
+            if (!position.makeMove(move)) {
+                // not a valid move
+                position.undoMove(move);
+                continue;
+            }
+            const score = -this.#qSearch(position, -beta, -alpha, childPVLine);
+            position.undoMove(move);
 
             bestScore = Math.max(bestScore, score);
 
@@ -285,12 +279,14 @@ class Search {
                 scores.push(33); // highest capture should be 31
             } else if (ttMove && move.equals(ttMove)) {
                 scores.push(32);
-            } else if (move instanceof EnPassantMove) {
+            } else if (move.moveType === MoveType.CAPTURE_EP) {
                 scores.push(6); //pawn-pawn
-            } else if (position.getPiece(move.toSquare)) {
-                // capture move
+            } else if (
+                move.moveType === MoveType.CAPTURE ||
+                move.moveType === MoveType.PROMOTION_CAPTURE
+            ) {
                 const victim = position.getPiece(move.toSquare).type;
-                const attacker = move.piece.type;
+                const attacker = position.getPiece(move.fromSquare).type;
                 const victimIndex = this.#getMvvLvaIndex(victim);
                 const attackerIndex = this.#getMvvLvaIndex(attacker);
                 // pawn-king === 1 // worst capture still puts above non-capture

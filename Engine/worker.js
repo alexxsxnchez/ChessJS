@@ -1,12 +1,12 @@
 import Search from "./search.js";
-import Position from "../GameManager/position.js";
+import BBPosition from "../GameManager/bbposition.js";
 
 const search = new Search();
 
 onmessage = (e) => {
     const data = e.data;
     if (data.type === "search") {
-        const position = new Position(data.position);
+        const position = new BBPosition(data.fen);
         console.log(position);
         const result = search.iterativeDeepeningSearch(position);
         postMessage(result);

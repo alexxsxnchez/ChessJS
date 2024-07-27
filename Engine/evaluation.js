@@ -88,17 +88,7 @@ const PIECE_SQUARE_TABLES_KING_LATE = [
     [-50, -30, -30, -30, -30, -30, -30, -50],
 ];
 
-function evaluate(position, ply) {
-    if (!position.doLegalMovesExist()) {
-        if (position.isKingInCheck()) {
-            // checkmate
-            return -100000 + ply;
-        } else {
-            // stalemate
-            return 0;
-        }
-    }
-
+function evaluate(position) {
     const currentTurn = position.currentTurn;
     let materialScore = 0;
     let pieceTableScore = 0;
@@ -106,61 +96,57 @@ function evaluate(position, ply) {
     let kingPieceTableScoreLate = 0;
     let phaseValue = 0;
 
-    for (let [pieceSquare, piece] of position.getPieceSquares()) {
+    const allBB = position.sides[PieceColour.WHITE]
+        .copy()
+        .or(position.sides[PieceColour.BLACK]);
+
+    while (!allBB.isEmpty()) {
+        const pieceSquare = allBB.getLowestBitPosition();
+        allBB.popLowestBit();
+        const piece = position.getPiece(pieceSquare);
+
         const who2move = piece.colour === currentTurn ? 1 : -1;
-        const adjustedRow =
-            piece.colour === PieceColour.WHITE
-                ? 7 - pieceSquare.row
-                : pieceSquare.row;
-        // const col =
-        //     piece.colour === PieceColour.BLACK
-        //         ? 7 - pieceSquare.col
-        //         : pieceSquare.col;
+        const row = Math.floor(pieceSquare / 8);
+        const col = pieceSquare % 8;
+
+        const adjustedRow = piece.colour === PieceColour.WHITE ? 7 - row : row;
+
         switch (piece.type) {
             case PieceType.PAWN:
                 materialScore += PAWN_VALUE * who2move;
                 pieceTableScore +=
-                    PIECE_SQUARE_TABLES_PAWN[adjustedRow][pieceSquare.col] *
-                    who2move;
+                    PIECE_SQUARE_TABLES_PAWN[adjustedRow][col] * who2move;
                 break;
             case PieceType.KNIGHT:
                 materialScore += KNIGHT_VALUE * who2move;
                 pieceTableScore +=
-                    PIECE_SQUARE_TABLES_KNIGHT[adjustedRow][pieceSquare.col] *
-                    who2move;
+                    PIECE_SQUARE_TABLES_KNIGHT[adjustedRow][col] * who2move;
                 phaseValue += 1;
                 break;
             case PieceType.BISHOP:
                 materialScore += BISHOP_VALUE * who2move;
                 pieceTableScore +=
-                    PIECE_SQUARE_TABLES_BISHOP[adjustedRow][pieceSquare.col] *
-                    who2move;
+                    PIECE_SQUARE_TABLES_BISHOP[adjustedRow][col] * who2move;
                 phaseValue += 1;
                 break;
             case PieceType.ROOK:
                 materialScore += ROOK_VALUE * who2move;
                 pieceTableScore +=
-                    PIECE_SQUARE_TABLES_ROOK[adjustedRow][pieceSquare.col] *
-                    who2move;
+                    PIECE_SQUARE_TABLES_ROOK[adjustedRow][col] * who2move;
                 phaseValue += 2;
                 break;
             case PieceType.QUEEN:
                 materialScore += QUEEN_VALUE * who2move;
                 pieceTableScore +=
-                    PIECE_SQUARE_TABLES_QUEEN[adjustedRow][pieceSquare.col] *
-                    who2move;
+                    PIECE_SQUARE_TABLES_QUEEN[adjustedRow][col] * who2move;
                 phaseValue += 4;
                 break;
             case PieceType.KING:
                 materialScore += KING_VALUE * who2move;
                 kingPieceTableScoreEarly +=
-                    PIECE_SQUARE_TABLES_KING_EARLY[adjustedRow][
-                        pieceSquare.col
-                    ] * who2move;
+                    PIECE_SQUARE_TABLES_KING_EARLY[adjustedRow][col] * who2move;
                 kingPieceTableScoreLate +=
-                    PIECE_SQUARE_TABLES_KING_LATE[adjustedRow][
-                        pieceSquare.col
-                    ] * who2move;
+                    PIECE_SQUARE_TABLES_KING_LATE[adjustedRow][col] * who2move;
                 break;
         }
     }

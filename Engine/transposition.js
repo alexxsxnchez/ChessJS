@@ -25,7 +25,7 @@ class PVEntry {
 }
 
 class TranspositionTable {
-    ENABLED = true;
+    ENABLED = false;
 
     constructor(maxSize = 1e6) {
         this.sqrtSize = Math.floor(Math.sqrt(maxSize));

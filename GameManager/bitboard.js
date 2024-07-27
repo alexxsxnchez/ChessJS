@@ -158,6 +158,9 @@ class Bitboard {
     }
 
     getLowestBitPosition() {
+        if (this.isEmpty()) {
+            return null;
+        }
         if (this.lo) {
             return Bitboard.#getLowestBitPosition32(this.lo);
         }
@@ -170,10 +173,12 @@ class Bitboard {
     }
 
     popLowestBit() {
-        if (this.lo) {
-            this.lo = Bitboard.#popLowestBit32(this.lo);
-        } else {
-            this.hi = Bitboard.#popLowestBit32(this.hi);
+        if (!this.isEmpty()) {
+            if (this.lo) {
+                this.lo = Bitboard.#popLowestBit32(this.lo);
+            } else {
+                this.hi = Bitboard.#popLowestBit32(this.hi);
+            }
         }
         return this;
     }

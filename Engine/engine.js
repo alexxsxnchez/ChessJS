@@ -11,7 +11,7 @@ class Engine {
             this.cancelled = false;
             this.worker.postMessage({
                 type: "search",
-                position: position,
+                fen: position.generateFEN(),
             });
         });
 
@@ -23,14 +23,8 @@ class Engine {
             const moveObject = e.data;
             if (moveObject) {
                 this.game.makeMove(
-                    new Square(
-                        moveObject.fromSquare.row,
-                        moveObject.fromSquare.col
-                    ),
-                    new Square(
-                        moveObject.toSquare.row,
-                        moveObject.toSquare.col
-                    ),
+                    moveObject.fromSquare,
+                    moveObject.toSquare,
                     moveObject.promotionType
                 );
             }

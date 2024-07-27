@@ -16,12 +16,12 @@ function main() {
     eventBus.on("assets::ready", () => {
         chessboard = new Chessboard(assetLoader, game);
         soundManager = new SoundManager(assetLoader);
-        game.start(GameType.HUMAN_VS_HUMAN);
+        game.start(GameType.HUMAN_VS_AI);
     });
 
     eventBus.on("sidepanel::start", () => {
         if (game) {
-            game.start(GameType.HUMAN_VS_HUMAN);
+            game.start(GameType.HUMAN_VS_AI);
         }
     });
 

@@ -28,9 +28,6 @@ class Precomputed {
     #initPieceMovementBB() {
         this.PAWN_ATTACKS = Array.from(Array(2), (_, colour) =>
             Array.from(Array(64), (_, sq) => {
-                if (sq < 8 || sq >= 56) {
-                    return new Bitboard();
-                }
                 return this.#pawnAttacksBB(colour, sq);
             })
         );

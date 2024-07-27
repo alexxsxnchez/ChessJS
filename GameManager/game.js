@@ -77,6 +77,11 @@ class Game {
             this.moveHistory.push(move);
 
             this.currentLegalMoves = generateLegalForSquare(this.position);
+
+            console.log(this.position.generateFEN());
+
+            eventBus.emit("state::updated");
+
             const canMove = this.currentLegalMoves.size > 0;
             const inCheck = this.position.isKingInCheck();
             if (canMove) {

@@ -15,17 +15,14 @@ class ZobristTable {
      */
     #pieceTable;
     constructor() {
-        this.#pieceTable = new Array(8);
-        for (let row = 0; row < 8; row++) {
-            this.#pieceTable[row] = new Array(8);
-            for (let col = 0; col < 8; col++) {
-                this.#pieceTable[row][col] = new Array(12);
-                for (let piece = 0; piece < 12; piece++) {
-                    this.#pieceTable[row][col][piece] = [
-                        this.#getRandom32BitNumber(),
-                        this.#getRandom32BitNumber(),
-                    ];
-                }
+        this.#pieceTable = new Array(64);
+        for (let sq = 0; sq < 64; sq++) {
+            this.#pieceTable[sq] = new Array(12);
+            for (let piece = 0; piece < 12; piece++) {
+                this.#pieceTable[sq][piece] = [
+                    this.#getRandom32BitNumber(),
+                    this.#getRandom32BitNumber(),
+                ];
             }
         }
         this.whiteKingsideRights = [
@@ -67,8 +64,9 @@ class ZobristTable {
 
         // en passant
         if (position.enPassantSquare) {
-            loH ^= this.enPassantFiles[position.enPassantSquare.col][0];
-            hiH ^= this.enPassantFiles[position.enPassantSquare.col][1];
+            const epFile = position.enPassantSquare % 8;
+            loH ^= this.enPassantFiles[epFile][0];
+            hiH ^= this.enPassantFiles[epFile][1];
         }
 
         // castling rights
@@ -90,147 +88,148 @@ class ZobristTable {
         }
 
         // piece positions
-        for (let [pieceSquare, piece] of position.getPieceSquares()) {
+        const allBB = position.sides[PieceColour.WHITE]
+            .copy()
+            .or(position.sides[PieceColour.BLACK]);
+
+        while (!allBB.isEmpty()) {
+            const sq = allBB.getLowestBitPosition();
+            allBB.popLowestBit();
+            const piece = position.getPiece(sq);
             const pieceIndex = this.#getPieceIndex(piece);
-            loH ^=
-                this.#pieceTable[pieceSquare.row][pieceSquare.col][
-                    pieceIndex
-                ][0];
-            hiH ^=
-                this.#pieceTable[pieceSquare.row][pieceSquare.col][
-                    pieceIndex
-                ][1];
+            loH ^= this.#pieceTable[sq][pieceIndex][0];
+            hiH ^= this.#pieceTable[sq][pieceIndex][1];
         }
         return [loH, hiH];
     }
 
-    updateHash(loH, hiH, oldPosition, newPosition, move) {
-        loH ^= this.blackToMove[0];
-        hiH ^= this.blackToMove[1];
+    // updateHash(loH, hiH, oldPosition, newPosition, move) {
+    //     loH ^= this.blackToMove[0];
+    //     hiH ^= this.blackToMove[1];
 
-        // en passant
-        if (oldPosition.enPassantSquare) {
-            // TODO: squares are now numbers including 0 so can't IF
-            loH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][0];
-            hiH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][1];
-        }
-        if (newPosition.enPassantSquare) {
-            loH ^= this.enPassantFiles[newPosition.enPassantSquare.col][0];
-            hiH ^= this.enPassantFiles[newPosition.enPassantSquare.col][1];
-        }
+    //     // en passant
+    //     if (oldPosition.enPassantSquare) {
+    //         // TODO: squares are now numbers including 0 so can't IF
+    //         loH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][0];
+    //         hiH ^= this.enPassantFiles[oldPosition.enPassantSquare.col][1];
+    //     }
+    //     if (newPosition.enPassantSquare) {
+    //         loH ^= this.enPassantFiles[newPosition.enPassantSquare.col][0];
+    //         hiH ^= this.enPassantFiles[newPosition.enPassantSquare.col][1];
+    //     }
 
-        // castling rights
-        if (
-            oldPosition.whiteKingsideRights !== newPosition.whiteKingsideRights
-        ) {
-            loH ^= this.whiteKingsideRights[0];
-            hiH ^= this.whiteKingsideRights[1];
-        }
-        if (
-            oldPosition.whiteQueensideRights !==
-            newPosition.whiteQueensideRights
-        ) {
-            loH ^= this.whiteQueensideRights[0];
-            hiH ^= this.whiteQueensideRights[1];
-        }
-        if (
-            oldPosition.blackKingsideRights !== newPosition.blackKingsideRights
-        ) {
-            loH ^= this.blackKingsideRights[0];
-            hiH ^= this.blackKingsideRights[1];
-        }
-        if (
-            oldPosition.blackQueensideRights !==
-            newPosition.blackQueensideRights
-        ) {
-            loH ^= this.blackQueensideRights[0];
-            hiH ^= this.blackQueensideRights[1];
-        }
+    //     // castling rights
+    //     if (
+    //         oldPosition.whiteKingsideRights !== newPosition.whiteKingsideRights
+    //     ) {
+    //         loH ^= this.whiteKingsideRights[0];
+    //         hiH ^= this.whiteKingsideRights[1];
+    //     }
+    //     if (
+    //         oldPosition.whiteQueensideRights !==
+    //         newPosition.whiteQueensideRights
+    //     ) {
+    //         loH ^= this.whiteQueensideRights[0];
+    //         hiH ^= this.whiteQueensideRights[1];
+    //     }
+    //     if (
+    //         oldPosition.blackKingsideRights !== newPosition.blackKingsideRights
+    //     ) {
+    //         loH ^= this.blackKingsideRights[0];
+    //         hiH ^= this.blackKingsideRights[1];
+    //     }
+    //     if (
+    //         oldPosition.blackQueensideRights !==
+    //         newPosition.blackQueensideRights
+    //     ) {
+    //         loH ^= this.blackQueensideRights[0];
+    //         hiH ^= this.blackQueensideRights[1];
+    //     }
 
-        const capturedPiece = oldPosition.getPiece(move.toSquare);
-        if (capturedPiece) {
-            const capturedPieceIndex = this.#getPieceIndex(capturedPiece);
-            // XOR captured piece (except en passant)
-            loH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    capturedPieceIndex
-                ][0];
-            hiH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    capturedPieceIndex
-                ][1];
-        }
+    //     const capturedPiece = oldPosition.getPiece(move.toSquare);
+    //     if (capturedPiece) {
+    //         const capturedPieceIndex = this.#getPieceIndex(capturedPiece);
+    //         // XOR captured piece (except en passant)
+    //         loH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 capturedPieceIndex
+    //             ][0];
+    //         hiH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 capturedPieceIndex
+    //             ][1];
+    //     }
 
-        if (move instanceof CastleMove) {
-            const originalRookSquare = move.originalRookSquare;
-            const rook = oldPosition.getPiece(originalRookSquare);
-            const rookIndex = this.#getPieceIndex(rook);
-            // XOR old rook position
-            loH ^=
-                this.#pieceTable[originalRookSquare.row][
-                    originalRookSquare.col
-                ][rookIndex][0];
-            hiH ^=
-                this.#pieceTable[originalRookSquare.row][
-                    originalRookSquare.col
-                ][rookIndex][1];
-            const newRookCol = move.toSquare.col === 2 ? 3 : 5;
-            // XOR new rook position
-            loH ^=
-                this.#pieceTable[originalRookSquare.row][newRookCol][
-                    rookIndex
-                ][0];
-            hiH ^=
-                this.#pieceTable[originalRookSquare.row][newRookCol][
-                    rookIndex
-                ][1];
-        } else if (move instanceof EnPassantMove) {
-            const capturedPawnSquare = move.capturedPawnSquare;
-            const capturedPawn = oldPosition.getPiece(capturedPawnSquare);
-            const pawnIndex = this.#getPieceIndex(capturedPawn);
-            // XOR captured pawn
-            loH ^=
-                this.#pieceTable[capturedPawnSquare.row][
-                    capturedPawnSquare.col
-                ][pawnIndex][0];
-            hiH ^=
-                this.#pieceTable[capturedPawnSquare.row][
-                    capturedPawnSquare.col
-                ][pawnIndex][1];
-        }
+    //     if (move instanceof CastleMove) {
+    //         const originalRookSquare = move.originalRookSquare;
+    //         const rook = oldPosition.getPiece(originalRookSquare);
+    //         const rookIndex = this.#getPieceIndex(rook);
+    //         // XOR old rook position
+    //         loH ^=
+    //             this.#pieceTable[originalRookSquare.row][
+    //                 originalRookSquare.col
+    //             ][rookIndex][0];
+    //         hiH ^=
+    //             this.#pieceTable[originalRookSquare.row][
+    //                 originalRookSquare.col
+    //             ][rookIndex][1];
+    //         const newRookCol = move.toSquare.col === 2 ? 3 : 5;
+    //         // XOR new rook position
+    //         loH ^=
+    //             this.#pieceTable[originalRookSquare.row][newRookCol][
+    //                 rookIndex
+    //             ][0];
+    //         hiH ^=
+    //             this.#pieceTable[originalRookSquare.row][newRookCol][
+    //                 rookIndex
+    //             ][1];
+    //     } else if (move instanceof EnPassantMove) {
+    //         const capturedPawnSquare = move.capturedPawnSquare;
+    //         const capturedPawn = oldPosition.getPiece(capturedPawnSquare);
+    //         const pawnIndex = this.#getPieceIndex(capturedPawn);
+    //         // XOR captured pawn
+    //         loH ^=
+    //             this.#pieceTable[capturedPawnSquare.row][
+    //                 capturedPawnSquare.col
+    //             ][pawnIndex][0];
+    //         hiH ^=
+    //             this.#pieceTable[capturedPawnSquare.row][
+    //                 capturedPawnSquare.col
+    //             ][pawnIndex][1];
+    //     }
 
-        const pieceIndex = this.#getPieceIndex(move.piece);
-        loH ^=
-            this.#pieceTable[move.fromSquare.row][move.fromSquare.col][
-                pieceIndex
-            ][0];
-        hiH ^=
-            this.#pieceTable[move.fromSquare.row][move.fromSquare.col][
-                pieceIndex
-            ][1];
-        if (move instanceof PromotionMove) {
-            const promotionPiece = newPosition.getPiece(move.toSquare);
-            const promotionPieceIndex = this.#getPieceIndex(promotionPiece);
-            loH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    promotionPieceIndex
-                ][0];
-            hiH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    promotionPieceIndex
-                ][1];
-        } else {
-            loH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    pieceIndex
-                ][0];
-            hiH ^=
-                this.#pieceTable[move.toSquare.row][move.toSquare.col][
-                    pieceIndex
-                ][1];
-        }
-        return [loH, hiH];
-    }
+    //     const pieceIndex = this.#getPieceIndex(move.piece);
+    //     loH ^=
+    //         this.#pieceTable[move.fromSquare.row][move.fromSquare.col][
+    //             pieceIndex
+    //         ][0];
+    //     hiH ^=
+    //         this.#pieceTable[move.fromSquare.row][move.fromSquare.col][
+    //             pieceIndex
+    //         ][1];
+    //     if (move instanceof PromotionMove) {
+    //         const promotionPiece = newPosition.getPiece(move.toSquare);
+    //         const promotionPieceIndex = this.#getPieceIndex(promotionPiece);
+    //         loH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 promotionPieceIndex
+    //             ][0];
+    //         hiH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 promotionPieceIndex
+    //             ][1];
+    //     } else {
+    //         loH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 pieceIndex
+    //             ][0];
+    //         hiH ^=
+    //             this.#pieceTable[move.toSquare.row][move.toSquare.col][
+    //                 pieceIndex
+    //             ][1];
+    //     }
+    //     return [loH, hiH];
+    // }
 
     #getPieceIndex(piece) {
         let index;

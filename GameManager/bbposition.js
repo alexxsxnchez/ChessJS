@@ -167,7 +167,83 @@ class BBPosition {
     }
 
     generateFEN() {
-        return "";
+        let fen = "";
+        let noPieceCounter = 0;
+        for (let sq = 56; sq >= 0; sq++) {
+            const piece = this.squares[sq];
+            if (piece) {
+                if (noPieceCounter) {
+                    fen += noPieceCounter;
+                    noPieceCounter = 0;
+                }
+                let pieceChar;
+                switch (piece.type) {
+                    case PieceType.PAWN:
+                        pieceChar = "p";
+                        break;
+                    case PieceType.KNIGHT:
+                        pieceChar = "n";
+                        break;
+                    case PieceType.BISHOP:
+                        pieceChar = "b";
+                        break;
+                    case PieceType.ROOK:
+                        pieceChar = "r";
+                        break;
+                    case PieceType.QUEEN:
+                        pieceChar = "q";
+                        break;
+                    case PieceType.KING:
+                        pieceChar = "k";
+                        break;
+                }
+                if (piece.colour === PieceColour.WHITE) {
+                    pieceChar = pieceChar.toUpperCase();
+                }
+                fen += pieceChar;
+            } else {
+                noPieceCounter++;
+            }
+            if (sq % 8 === 7) {
+                sq -= 16;
+                if (noPieceCounter) {
+                    fen += noPieceCounter;
+                    noPieceCounter = 0;
+                }
+                fen += "/";
+            }
+        }
+        fen = fen.slice(0, -1);
+        if (this.currentTurn === PieceColour.WHITE) {
+            fen += " w ";
+        } else {
+            fen += " b ";
+        }
+        if (this.whiteKingsideRights) {
+            fen += "K";
+        }
+        if (this.whiteQueensideRights) {
+            fen += "Q";
+        }
+        if (this.blackKingsideRights) {
+            fen += "k";
+        }
+        if (this.blackQueensideRights) {
+            fen += "q";
+        }
+        if (fen.charAt(-1) === " ") {
+            fen += "-";
+        }
+        if (this.enPassantSquare !== null) {
+            const row = Math.floor(this.enPassantSquare / 8) + 1;
+            const col = this.enPassantSquare % 8;
+            fen += " " + String.fromCharCode(97 + col) + row;
+        } else {
+            fen += " -";
+        }
+        fen += " " + this.rule50;
+        fen += " " + Math.floor(this.ply / 2);
+        return fen;
     }
 
     makeMove(move) {
