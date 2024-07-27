@@ -1,6 +1,6 @@
-import { PieceColour, PieceType } from "./Immutable/Pieces/utils";
+import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
 import Bitboard from "./bitboard.js";
-import { Move, MoveType } from "./Immutable/bbMove.js";
+import { MoveType } from "./Immutable/bbMove.js";
 import { sqIsAttacked } from "./bbmovegen.js";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -20,20 +20,20 @@ class IrreversableState {
         whiteQueensideRights,
         blackKingsideRights,
         blackQueensideRights,
-        capturedPiece,
-        promotionType,
         enPassantSquare,
         rule50,
+        movedPiece,
+        capturedPiece,
     }) {
         this.hash = hash;
         this.whiteKingsideRights = whiteKingsideRights;
         this.whiteQueensideRights = whiteQueensideRights;
         this.blackKingsideRights = blackKingsideRights;
         this.blackQueensideRights = blackQueensideRights;
-        this.capturedPiece = capturedPiece;
-        this.promotionType = promotionType;
         this.enPassantSquare = enPassantSquare;
         this.rule50 = rule50;
+        this.movedPiece = movedPiece;
+        this.capturedPiece = capturedPiece;
     }
 }
 
@@ -54,7 +54,10 @@ class BBPosition {
     // states
 
     constructor(fen = STARTING_FEN) {
-        this.pieces = new Array(2).fill(new Array(6).fill(new Bitboard()));
+        this.pieces = Array.from({ length: 2 }, () =>
+            Array.from({ length: 6 }, () => new Bitboard())
+        );
+        // this.pieces = new Array(2).fill(new Array(6).fill(new Bitboard()));
         this.sides = [new Bitboard(), new Bitboard()];
         this.squares = new Array(64).fill(null);
         this.prevStates = [];
@@ -63,11 +66,9 @@ class BBPosition {
     }
 
     #createFromFEN(fen) {
-        // this.lastMove = null;
-
         const components = fen.split(" ");
         const pieces = components[0];
-        for (let i, sq = 0; i <= pieces.length; i++, sq++) {
+        for (let i = 0, sq = 56; i < pieces.length; i++, sq++) {
             const ch = pieces[i];
             switch (ch) {
                 case "p":
@@ -107,6 +108,7 @@ class BBPosition {
                     this.#putPiece(PieceType.KING, PieceColour.WHITE, sq);
                     break;
                 case "/":
+                    sq -= 16;
                     sq--;
                     break;
                 case "1":
@@ -118,7 +120,7 @@ class BBPosition {
                 case "7":
                 case "8":
                     sq += parseInt(ch);
-                    //row += Math.floor((col + parseInt(ch)) / 8);
+                    sq--;
                     break;
             }
         }
@@ -157,6 +159,7 @@ class BBPosition {
         this.rule50 = parseInt(components[4]);
 
         // full-move counter (doesn't reset)
+        // TODO: check this logic
         this.ply = parseInt(components[5]) * 2;
         if (this.currentTurn === PieceColour.BLACK) {
             this.ply--;
@@ -170,8 +173,13 @@ class BBPosition {
     makeMove(move) {
         const fromSquare = move.fromSquare;
         const toSquare = move.toSquare;
-        const moveType = move.type;
         const movedPiece = this.squares[fromSquare];
+
+        let capturedPiece = this.squares[toSquare];
+        if (move.moveType === MoveType.CAPTURE_EP) {
+            const delta = movedPiece.colour === PieceColour.WHITE ? 8 : -8;
+            capturedPiece = this.squares[toSquare - delta];
+        }
 
         this.prevStates.push(
             new IrreversableState({
@@ -183,18 +191,17 @@ class BBPosition {
                 enPassantSquare: this.enPassantSquare,
                 rule50: this.rule50,
                 movedPiece: movedPiece,
-                capturedPiece: this.squares[toSquare],
+                capturedPiece: capturedPiece,
             })
         );
 
         this.ply++;
         this.rule50++;
-
         this.enPassantSquare = null;
 
         this.#clearPiece(fromSquare);
 
-        switch (moveType) {
+        switch (move.moveType) {
             case MoveType.QUIET:
                 this.#putPiece(movedPiece.type, movedPiece.colour, toSquare);
                 break;
@@ -219,6 +226,7 @@ class BBPosition {
                     this.#getCastleRookSquares(toSquare);
                 this.#clearPiece(rookFromSquare);
                 this.#putPiece(PieceType.ROOK, movedPiece.colour, rookToSquare);
+                break;
 
             case MoveType.PROMOTION:
                 this.#putPiece(move.promotionType, movedPiece.colour, toSquare);
@@ -265,19 +273,10 @@ class BBPosition {
             this.blackKingsideRights = false;
         }
 
-        const kingSquare =
-            this.pieces[this.currentTurn][
-                PieceType.KING
-            ].getLowestBitPosition();
-        const opponent = PieceColour.getOpposite(this.currentTurn);
-        const isValidMove = !sqIsAttacked(this, kingSquare, opponent);
-
-        this.currentTurn = opponent;
+        const isValidMove = !this.isKingInCheck(this.currentTurn);
+        this.currentTurn = PieceColour.getOpposite(this.currentTurn);
 
         return isValidMove;
-
-        // TODO: return whether move is valid
-        return true;
     }
 
     // assumes past in move is the most recent move applied
@@ -296,7 +295,6 @@ class BBPosition {
 
         const fromSquare = move.fromSquare;
         const toSquare = move.toSquare;
-        const moveType = move.type;
 
         this.#putPiece(
             state.movedPiece.type,
@@ -305,7 +303,7 @@ class BBPosition {
         );
         this.#clearPiece(toSquare);
 
-        switch (moveType) {
+        switch (move.moveType) {
             case MoveType.QUIET:
             case MoveType.PROMOTION:
                 break;
@@ -336,11 +334,22 @@ class BBPosition {
                 this.#clearPiece(rookToSquare);
                 this.#putPiece(
                     PieceType.ROOK,
-                    movedPiece.colour,
+                    state.movedPiece.colour,
                     rookFromSquare
                 );
                 break;
         }
+    }
+
+    isKingInCheck(kingColour = this.currentTurn) {
+        const kingSquare =
+            this.pieces[kingColour][PieceType.KING].getLowestBitPosition();
+        const opponent = PieceColour.getOpposite(kingColour);
+        return sqIsAttacked(this, kingSquare, opponent);
+    }
+
+    getPiece(square) {
+        return this.squares[square];
     }
 
     #putPiece(type, colour, sq) {
@@ -351,9 +360,11 @@ class BBPosition {
 
     #clearPiece(sq) {
         const piece = this.squares[sq];
-        this.pieces[piece.colour][piece.type].clearBit(sq);
-        this.sides[piece.colour].clearBit(sq);
-        this.squares[sq] = null;
+        if (piece) {
+            this.pieces[piece.colour][piece.type].clearBit(sq);
+            this.sides[piece.colour].clearBit(sq);
+            this.squares[sq] = null;
+        }
     }
 
     #getCastleRookSquares(kingToSquare) {

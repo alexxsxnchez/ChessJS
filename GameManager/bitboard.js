@@ -16,6 +16,31 @@ class Bitboard {
         this.hi = hi >>> 0;
     }
 
+    string() {
+        const bitstring = `${this.hi.toString(2).padStart(32, "0")}${this.lo
+            .toString(2)
+            .padStart(32, "0")}`;
+        let formatted = bitstring + "\n";
+        formatted += "+  -  -  -  -  -  -  -  -  +\n";
+        for (let i = 0, j = 7; i < 64; i++, j--) {
+            // formatted += bitstring[j];
+            if (j % 8 === 7) {
+                formatted += " |  ";
+            }
+            if (bitstring[j] === "1") {
+                formatted += "1  ";
+            } else if (bitstring[j] === "0") {
+                formatted += "*  ";
+            }
+            if (j % 8 === 0) {
+                j += 16;
+                formatted += "|\n";
+            }
+        }
+        formatted += "+  -  -  -  -  -  -  -  -  +";
+        return formatted;
+    }
+
     copy() {
         return new Bitboard(this.lo, this.hi);
     }

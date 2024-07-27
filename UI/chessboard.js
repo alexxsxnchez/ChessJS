@@ -3,8 +3,7 @@ import {
     PieceType,
 } from "../GameManager/Immutable/Pieces/utils.js";
 import eventBus from "../Common/eventbus.js";
-import Square from "../GameManager/Immutable/square.js";
-import { PromotionMove } from "../GameManager/Immutable/move.js";
+import { Move, MoveType } from "../GameManager/Immutable/bbMove.js";
 
 const BOARD_SIZE = 8;
 const BORDER_WIDTH = 3;
@@ -78,31 +77,27 @@ class Chessboard {
         });
 
         this.canvas.addEventListener("mousedown", (e) => {
-            if (this.promotionSquare) {
+            if (this.promotionSquare !== null) {
                 this.#handlePromotionClick(e);
                 return;
             }
             const pieceSquare = this.#getEventPieceSquare(e);
-            if (pieceSquare) {
+            if (pieceSquare !== null) {
                 this.selectedPieceSquare = pieceSquare;
                 this.isDragging = true;
 
-                const currentPosition = this.game.getCurrentPosition();
-                const piece = currentPosition.getPiece(pieceSquare);
-                this.highlightSquares = currentPosition
-                    .getLegalMovesForPiece(pieceSquare, piece)
-                    .map((move) => move.toSquare);
+                this.highlightSquares = this.game.getLegalSquares(pieceSquare);
                 this.draw(e);
             }
         });
 
         this.canvas.addEventListener("mouseup", (e) => {
             this.isDragging = false;
-            if (!this.selectedPieceSquare) {
+            if (this.selectedPieceSquare === null) {
                 return;
             }
             const toSquare = this.#getEventSquare(e);
-            if (toSquare && !toSquare.equals(this.selectedPieceSquare)) {
+            if (toSquare !== this.selectedPieceSquare) {
                 if (this.#isPromotionSquare(toSquare)) {
                     this.promotionSquare = toSquare;
                     this.draw();
@@ -131,14 +126,14 @@ class Chessboard {
             BOARD_SIZE - 1 - Math.trunc((y - BORDER_WIDTH) / squareSize);
         const col = Math.trunc((x - BORDER_WIDTH) / squareSize);
         if (row >= 0 && row < 8 && col >= 0 && col < 8) {
-            return new Square(row, col);
+            return row * 8 + col;
         }
         return null;
     }
 
     #getEventPieceSquare(event) {
         const square = this.#getEventSquare(event);
-        if (!square) {
+        if (square === null) {
             return null;
         }
         const piece = this.game.getCurrentPosition().getPiece(square);
@@ -159,15 +154,20 @@ class Chessboard {
         const piece = currentPosition.getPiece(this.selectedPieceSquare);
         if (
             piece.type === PieceType.PAWN &&
-            (toSquare.row === 0 || toSquare.row === 7)
+            ((toSquare >= 0 && toSquare < 8) ||
+                (toSquare >= 56 && toSquare < 64))
         ) {
-            const testMove = new PromotionMove(
-                this.selectedPieceSquare,
-                toSquare,
-                piece,
-                PieceType.QUEEN
+            const legalMoves = this.game.currentLegalMoves.get(
+                this.selectedPieceSquare
             );
-            return currentPosition.isMoveLegal(testMove);
+            if (legalMoves) {
+                return legalMoves.some(
+                    (move) =>
+                        move.moveType === MoveType.PROMOTION ||
+                        move.moveType === MoveType.PROMOTION_CAPTURE
+                );
+            }
+            return false;
         }
     }
 
@@ -178,9 +178,14 @@ class Chessboard {
     #handlePromotionClick(e) {
         const square = this.#getEventSquare(e);
         let promotionType = null;
-        if (square.col === this.promotionSquare.col) {
+
+        const promotionSquareCol = this.promotionSquare % 8;
+        const col = square % 8;
+        const row = Math.floor(square / 8);
+
+        if (col === promotionSquareCol) {
             if (this.whiteInputEnabled) {
-                switch (square.row) {
+                switch (row) {
                     case 7:
                         promotionType = PieceType.QUEEN;
                         break;
@@ -195,7 +200,7 @@ class Chessboard {
                         break;
                 }
             } else {
-                switch (square.row) {
+                switch (row) {
                     case 0:
                         promotionType = PieceType.QUEEN;
                         break;
@@ -254,32 +259,35 @@ class Chessboard {
 
         // draw selected piece square
         if (this.selectedPieceSquare) {
+            const selectedRow = Math.floor(this.selectedPieceSquare / 8);
+            const selectedCol = this.selectedPieceSquare % 8;
+
             this.ctx.fillStyle = "rgba(230, 230, 250, 0.7)";
             this.ctx.fillRect(
-                BORDER_WIDTH + this.selectedPieceSquare.col * squareSize,
-                BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - this.selectedPieceSquare.row) *
-                        squareSize,
+                BORDER_WIDTH + selectedCol * squareSize,
+                BORDER_WIDTH + (BOARD_SIZE - 1 - selectedRow) * squareSize,
                 squareSize,
                 squareSize
             );
         }
 
         // draw last move
-        const lastMove = this.game.getCurrentPosition().lastMove;
+        const lastMove = this.game.getLastMove();
         if (lastMove) {
+            const fromRow = Math.floor(lastMove.fromSquare / 8);
+            const fromCol = lastMove.fromSquare % 8;
+            const toRow = Math.floor(lastMove.toSquare / 8);
+            const toCol = lastMove.toSquare % 8;
             this.ctx.fillStyle = "rgba(245, 204, 42, 0.5)";
             this.ctx.fillRect(
-                BORDER_WIDTH + lastMove.fromSquare.col * squareSize,
-                BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - lastMove.fromSquare.row) * squareSize,
+                BORDER_WIDTH + fromCol * squareSize,
+                BORDER_WIDTH + (BOARD_SIZE - 1 - fromRow) * squareSize,
                 squareSize,
                 squareSize
             );
             this.ctx.fillRect(
-                BORDER_WIDTH + lastMove.toSquare.col * squareSize,
-                BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - lastMove.toSquare.row) * squareSize,
+                BORDER_WIDTH + toCol * squareSize,
+                BORDER_WIDTH + (BOARD_SIZE - 1 - toRow) * squareSize,
                 squareSize,
                 squareSize
             );
@@ -287,21 +295,17 @@ class Chessboard {
             const lineWidth = 2;
             this.ctx.lineWidth = lineWidth;
             this.ctx.strokeRect(
+                BORDER_WIDTH + fromCol * squareSize + lineWidth / 2,
                 BORDER_WIDTH +
-                    lastMove.fromSquare.col * squareSize +
-                    lineWidth / 2,
-                BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - lastMove.fromSquare.row) * squareSize +
+                    (BOARD_SIZE - 1 - fromRow) * squareSize +
                     lineWidth / 2,
                 squareSize - lineWidth,
                 squareSize - lineWidth
             );
             this.ctx.strokeRect(
+                BORDER_WIDTH + toCol * squareSize + lineWidth / 2,
                 BORDER_WIDTH +
-                    lastMove.toSquare.col * squareSize +
-                    lineWidth / 2,
-                BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - lastMove.toSquare.row) * squareSize +
+                    (BOARD_SIZE - 1 - toRow) * squareSize +
                     lineWidth / 2,
                 squareSize - lineWidth,
                 squareSize - lineWidth
@@ -314,6 +318,9 @@ class Chessboard {
             this.ctx.strokeStyle = "rgba(0, 0, 0, 0.14)";
             this.ctx.lineWidth = 8;
             for (let highlightSquare of this.highlightSquares) {
+                const highlightRow = Math.floor(highlightSquare / 8);
+                const highlightCol = highlightSquare % 8;
+
                 const piece = this.game
                     .getCurrentPosition()
                     .getPiece(highlightSquare);
@@ -321,10 +328,9 @@ class Chessboard {
 
                 this.ctx.beginPath();
                 this.ctx.arc(
-                    BORDER_WIDTH + (highlightSquare.col + 0.5) * squareSize,
+                    BORDER_WIDTH + (highlightCol + 0.5) * squareSize,
                     BORDER_WIDTH +
-                        (BOARD_SIZE - 1 - highlightSquare.row + 0.5) *
-                            squareSize,
+                        (BOARD_SIZE - 1 - highlightRow + 0.5) * squareSize,
                     circleSize,
                     0,
                     2 * Math.PI
@@ -361,19 +367,23 @@ class Chessboard {
         const sizeMultiplier = 0.93;
         const offset = (1 - sizeMultiplier) / 2;
         const position = this.game.getCurrentPosition();
-        for (let [pieceSquare, piece] of position.getPieceSquares()) {
+
+        for (let sq = 0; sq < 64; sq++) {
+            const piece = position.getPiece(sq);
+            if (!piece) {
+                continue;
+            }
             const isSelectedPiece =
-                event &&
-                this.selectedPieceSquare &&
-                this.selectedPieceSquare.equals(pieceSquare) &&
-                this.isDragging;
+                event && this.selectedPieceSquare === sq && this.isDragging;
+
             if (!isSelectedPiece) {
+                const pieceRow = Math.floor(sq / 8);
+                const pieceCol = sq % 8;
                 this.ctx.drawImage(
                     this.assetLoader.getPieceImage(piece.type, piece.colour),
-                    BORDER_WIDTH + (pieceSquare.col + offset) * squareSize,
+                    BORDER_WIDTH + (pieceCol + offset) * squareSize,
                     BORDER_WIDTH +
-                        (BOARD_SIZE - 1 - pieceSquare.row + offset) *
-                            squareSize,
+                        (BOARD_SIZE - 1 - pieceRow + offset) * squareSize,
                     squareSize * sizeMultiplier,
                     squareSize * sizeMultiplier
                 );
@@ -381,19 +391,21 @@ class Chessboard {
         }
 
         // draw selected piece as hovering
-        if (event && this.selectedPieceSquare && this.isDragging) {
+        if (event && this.selectedPieceSquare !== null && this.isDragging) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
 
             const borderSquare = this.#getEventSquare(event);
+            const borderRow = Math.floor(borderSquare / 8);
+            const borderCol = borderSquare % 8;
             const lineWidth = 4;
             this.ctx.lineWidth = lineWidth;
             this.ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
             this.ctx.strokeRect(
-                BORDER_WIDTH + borderSquare.col * squareSize + lineWidth / 2,
+                BORDER_WIDTH + borderCol * squareSize + lineWidth / 2,
                 BORDER_WIDTH +
-                    (BOARD_SIZE - 1 - borderSquare.row) * squareSize +
+                    (BOARD_SIZE - 1 - borderRow) * squareSize +
                     lineWidth / 2,
                 squareSize - lineWidth,
                 squareSize - lineWidth
@@ -415,23 +427,24 @@ class Chessboard {
     #drawPromotionMenu() {
         this.ctx.save();
         const squareSize = this.#getSquareSize();
-        const y = this.promotionSquare.row === 0 ? 4 : 0;
+        const promotionRow = Math.floor(this.promotionSquare / 8);
+        const promotionCol = this.promotionSquare % 8;
+
+        const y = promotionRow === 0 ? 4 : 0;
         const lineWidth = 1;
         this.ctx.lineWidth = lineWidth;
         this.ctx.strokeStyle = "white";
         this.ctx.shadowColor = "rgba(180,180,180, 0.5)";
         this.ctx.shadowBlur = 2;
         this.ctx.strokeRect(
-            BORDER_WIDTH +
-                this.promotionSquare.col * squareSize +
-                lineWidth / 2,
+            BORDER_WIDTH + promotionCol * squareSize + lineWidth / 2,
             BORDER_WIDTH + y * squareSize + lineWidth / 2,
             squareSize - lineWidth,
             squareSize * 4 - lineWidth
         );
         this.ctx.fillStyle = "white";
         this.ctx.fillRect(
-            BORDER_WIDTH + this.promotionSquare.col * squareSize,
+            BORDER_WIDTH + promotionCol * squareSize,
             BORDER_WIDTH + y * squareSize,
             squareSize,
             squareSize * 4
@@ -450,10 +463,10 @@ class Chessboard {
             PieceType.BISHOP,
         ].forEach((pieceType, i) => {
             const dir = colour === PieceColour.WHITE ? 1 : -1;
-            const y = BOARD_SIZE - 1 - this.promotionSquare.row + i * dir;
+            const y = BOARD_SIZE - 1 - promotionRow + i * dir;
             this.ctx.drawImage(
                 this.assetLoader.getPieceImage(pieceType, colour),
-                BORDER_WIDTH + (this.promotionSquare.col + offset) * squareSize,
+                BORDER_WIDTH + (promotionCol + offset) * squareSize,
                 BORDER_WIDTH + y * squareSize,
                 squareSize * sizeMultiplier,
                 squareSize * sizeMultiplier
@@ -466,7 +479,7 @@ class Chessboard {
     draw(event = null) {
         this.#drawBoard();
         this.#drawPieces(event);
-        if (this.promotionSquare) {
+        if (this.promotionSquare !== null) {
             this.#drawPromotionMenu();
         }
     }

@@ -4,6 +4,10 @@ import {
     PieceType,
 } from "../GameManager/Immutable/Pieces/utils.js";
 
+const PIECE_TYPES = ["pawn", "rook", "knight", "bishop", "queen", "king"];
+
+const COLOURS = ["white", "black"];
+
 class AssetLoader {
     #pieces;
     #sounds;
@@ -15,7 +19,7 @@ class AssetLoader {
     }
 
     getPieceImage(pieceType, colour) {
-        return this.#pieces[`${pieceType}-${colour}`];
+        return this.#pieces[`${PIECE_TYPES[pieceType]}-${COLOURS[colour]}`];
     }
 
     getSound(name) {
@@ -24,17 +28,9 @@ class AssetLoader {
 
     #loadPieceImages() {
         let pieceCounter = 0;
-        const pieceTypes = [
-            "pawn",
-            "rook",
-            "knight",
-            "bishop",
-            "queen",
-            "king",
-        ];
-        const colours = ["white", "black"];
-        pieceTypes.forEach((pieceType) => {
-            colours.forEach((colour) => {
+
+        PIECE_TYPES.forEach((pieceType) => {
+            COLOURS.forEach((colour) => {
                 const img = new Image();
                 img.onload = () => {
                     pieceCounter++;

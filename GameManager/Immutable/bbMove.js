@@ -16,6 +16,15 @@ class Move {
         this.moveType = moveType;
         this.promotionType = promotionType;
     }
+
+    equals(other) {
+        return (
+            this.fromSquare === other.fromSquare &&
+            this.toSquare === other.toSquare &&
+            this.moveType === other.moveType &&
+            this.promotionType === other.promotionType
+        );
+    }
 }
 
 export { Move, MoveType };

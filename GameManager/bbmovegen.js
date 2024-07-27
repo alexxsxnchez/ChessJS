@@ -1,7 +1,7 @@
-import { PieceColour, PieceType } from "./Immutable/Pieces/utils";
+import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
 import Bitboard from "./bitboard.js";
 import PRECOMPUTED from "./precomputed.js";
-import { Move, MoveType } from "./Immutable/bbMove";
+import { Move, MoveType } from "./Immutable/bbMove.js";
 
 function sqIsAttacked(position, sq, attackingColour) {
     const queenBB = position.pieces[attackingColour][PieceType.QUEEN];
@@ -42,6 +42,26 @@ function sqIsAttacked(position, sq, attackingColour) {
     ) {
         return true;
     }
+    return false;
+}
+
+function generateLegalForSquare(position) {
+    const movesMap = new Map();
+    const moves = generatePseudoLegal(position);
+    moves.forEach((move) => {
+        const isValid = position.makeMove(move);
+        position.undoMove(move);
+        if (isValid) {
+            let moveArr = movesMap.get(move.fromSquare);
+            if (moveArr === undefined) {
+                moveArr = [move];
+            } else {
+                moveArr.push(move);
+            }
+            movesMap.set(move.fromSquare, moveArr);
+        }
+    });
+    return movesMap;
 }
 
 function generatePseudoLegal(position) {
@@ -83,25 +103,25 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
 
     function addPromotionMoves(toBB, direction, capture) {
         addPawnMoves(
-            toBB,
+            toBB.copy(),
             direction,
             capture ? MoveType.PROMOTION_CAPTURE : MoveType.PROMOTION,
             PieceType.QUEEN
         );
         addPawnMoves(
-            toBB,
+            toBB.copy(),
             direction,
             capture ? MoveType.PROMOTION_CAPTURE : MoveType.PROMOTION,
             PieceType.KNIGHT
         );
         addPawnMoves(
-            toBB,
+            toBB.copy(),
             direction,
             capture ? MoveType.PROMOTION_CAPTURE : MoveType.PROMOTION,
             PieceType.ROOK
         );
         addPawnMoves(
-            toBB,
+            toBB.copy(),
             direction,
             capture ? MoveType.PROMOTION_CAPTURE : MoveType.PROMOTION,
             PieceType.BISHOP
@@ -127,7 +147,7 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
             .andNot(occupiedBB)
             .shiftL(rankDir)
             .andNot(occupiedBB);
-        addPawnMoves(doublePawnPushToBB, 2 * rankDirection, MoveType.QUIET);
+        addPawnMoves(doublePawnPushToBB, 2 * rankDir, MoveType.QUIET);
     }
 
     // non-capture promotion moves
@@ -138,6 +158,8 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
     const rightFile = PRECOMPUTED.FILES[whiteToPlay ? 7 : 0];
     const leftCaptureDirection = rankDir + leftDir;
     const rightCaptureDirection = rankDir - leftDir;
+    const opponentBB =
+        position.sides[PieceColour.getOpposite(position.currentTurn)];
 
     // capture moves
     const pawnLeftCapturedBB = pawnsBB
@@ -150,7 +172,7 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
         leftCaptureDirection,
         MoveType.CAPTURE
     );
-    addPawnPromotions(
+    addPromotionMoves(
         pawnLeftCapturedBB.copy().and(lastRow),
         leftCaptureDirection,
         true
@@ -166,7 +188,7 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
         rightCaptureDirection,
         MoveType.CAPTURE
     );
-    addPawnPromotions(
+    addPromotionMoves(
         pawnRightCapturedBB.copy().and(lastRow),
         rightCaptureDirection,
         true
@@ -187,7 +209,7 @@ function generatePawnMoves(position, captureAndPromotionOnly = false) {
             .andNot(rightFile)
             .shiftL(rightCaptureDirection)
             .and(pawnEnPassantBB);
-        addPawnMoves(pawnRightEPBB, rightCaptureMovement, MoveType.CAPTURE_EP);
+        addPawnMoves(pawnRightEPBB, rightCaptureDirection, MoveType.CAPTURE_EP);
     }
 
     return moves;
@@ -280,7 +302,7 @@ function generateCastlingMoves(position) {
     let kingsideRights;
     let queensideRights;
     let kingPosition;
-    if (position.colour === PieceColour.WHITE) {
+    if (position.currentTurn === PieceColour.WHITE) {
         kingsideRights = position.whiteKingsideRights;
         queensideRights = position.whiteQueensideRights;
         kingPosition = 4;
@@ -322,7 +344,7 @@ function isCastlingLegal(position, kingPosition, kingside, colour) {
     ) {
         return false;
     }
-    if (!kingside && occupiedBB.isSet(kingPosition + 3 * direction)) {
+    if (!kingside && occupiedBB.isSet(kingPosition - 3)) {
         return false;
     }
 
@@ -355,9 +377,9 @@ function makeSlidingAttackMask(fromBB, occupiedBB, rankDir, fileDir) {
     while (!fromBB.isEmpty()) {
         fromBB.shiftL(direction);
         if (fileDir === -1) {
-            fromBB.andNot(PRECOMPUTED.FILES[0]);
-        } else if (fileDir === 1) {
             fromBB.andNot(PRECOMPUTED.FILES[7]);
+        } else if (fileDir === 1) {
+            fromBB.andNot(PRECOMPUTED.FILES[0]);
         }
         bb.or(fromBB);
 
@@ -366,4 +388,9 @@ function makeSlidingAttackMask(fromBB, occupiedBB, rankDir, fileDir) {
     return bb;
 }
 
-export { generatePseudoLegal, generateCapturesAndPromotions, sqIsAttacked };
+export {
+    generateLegalForSquare,
+    generatePseudoLegal,
+    generateCapturesAndPromotions,
+    sqIsAttacked,
+};

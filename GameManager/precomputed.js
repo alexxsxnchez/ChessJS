@@ -1,5 +1,5 @@
-import { PieceColour } from "./Immutable/Pieces/utils";
-import Bitboard from "./bitboard";
+import { PieceColour } from "./Immutable/Pieces/utils.js";
+import Bitboard from "./bitboard.js";
 
 class Precomputed {
     constructor() {
@@ -27,9 +27,12 @@ class Precomputed {
 
     #initPieceMovementBB() {
         this.PAWN_ATTACKS = Array.from(Array(2), (_, colour) =>
-            Array.from(Array(48), (_, sq) =>
-                this.#pawnAttacksBB(colour, sq + 8)
-            )
+            Array.from(Array(64), (_, sq) => {
+                if (sq < 8 || sq >= 56) {
+                    return new Bitboard();
+                }
+                return this.#pawnAttacksBB(colour, sq);
+            })
         );
         this.KNIGHT_MOVEMENTS = Array.from(Array(64), (_, sq) =>
             this.#knightMovementBB(sq)
