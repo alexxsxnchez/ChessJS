@@ -393,9 +393,25 @@ function makeSlidingAttackMask(fromBB, occupiedBB, rankDir, fileDir) {
     return bb;
 }
 
+function perft(position, depth) {
+    if (depth === 0) {
+        return 1;
+    }
+    let nodes = 0;
+    const moves = generatePseudoLegal(position);
+    for (let move of moves) {
+        if (position.makeMove(move)) {
+            nodes += perft(position, depth - 1);
+        }
+        position.undoMove(move);
+    }
+    return nodes;
+}
+
 export {
     generateLegalForSquare,
     generatePseudoLegal,
     generateCapturesAndPromotions,
     sqIsAttacked,
+    perft,
 };
