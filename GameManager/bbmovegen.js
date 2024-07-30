@@ -22,11 +22,6 @@ function sqIsAttacked(position, sq, attackingColour) {
     }
 
     const knightBB = position.pieces[attackingColour][PieceType.KNIGHT];
-    if (!PRECOMPUTED.KNIGHT_MOVEMENTS[sq]) {
-        console.log(sq);
-        console.log(knightBB.string());
-        console.log(PRECOMPUTED.KNIGHT_MOVEMENTS);
-    }
     if (!PRECOMPUTED.KNIGHT_MOVEMENTS[sq].copy().and(knightBB).isEmpty()) {
         return true;
     }

@@ -1,4 +1,3 @@
-import ZobristTable from "./zobrist.js";
 import {
     TranspositionTable,
     PVEntry,
@@ -12,7 +11,6 @@ import { MoveType } from "../GameManager/Immutable/bbMove.js";
 
 class Search {
     constructor() {
-        this.zobristTable = new ZobristTable();
         this.transpositionTable = new TranspositionTable();
         this.pvTable = new TranspositionTable(); //1e4);
         this.realPly = 0;
@@ -64,33 +62,25 @@ class Search {
     }
 
     #negamax(position, depth, ply, alpha, beta, pvLine) {
-        const [loHash, hiHash] = this.zobristTable.computeHash(position);
-        const ttEntry = this.transpositionTable.get(loHash, hiHash);
+        const pvEntry = this.pvTable.get(position.hash.lo, position.hash.hi);
+        if (pvEntry) {
+            pvLine.splice(0, pvLine.length, ...pvEntry.moves);
+        }
+
+        const ttEntry = this.transpositionTable.get(
+            position.hash.lo,
+            position.hash.hi
+        );
 
         // could check for legality in rare case a whole different pos was stored here
-        if (/*ply > 0 && */ ttEntry && ttEntry.depth >= depth) {
+        if (ttEntry && ttEntry.depth >= depth) {
             if (ttEntry.flag === TTFlag.EXACT) {
-                const pvEntry = this.pvTable.get(loHash, hiHash);
-                if (pvEntry) {
-                    pvLine.splice(0, pvLine.length, ...pvEntry.moves);
-                } else {
-                    console.log("WTFF!!!");
-                }
-                // if (ply > 0) {
                 return ttEntry.value;
-                // }
             } else if (ttEntry.flag === TTFlag.ALPHA && ttEntry.value < alpha) {
                 return alpha;
-
-                //alpha = Math.max(alpha, ttEntry.value);
             } else if (ttEntry.flag === TTFlag.BETA && ttEntry.value > beta) {
                 return beta;
-                //beta = Math.min(beta, ttEntry.value);
             }
-            // if (alpha >= beta) {
-            //     console.log("cutoff");
-            //     return beta; //ttEntry.value; // should this be return beta??
-            // }
         }
 
         if (depth === 0) {
@@ -167,14 +157,14 @@ class Search {
                 pvLineCopy.push(move);
             });
             this.pvTable.store(
-                new PVEntry(loHash, hiHash, pvLineCopy, this.realPly)
+                new PVEntry(position.hash.lo, position.hash.hi, pvLineCopy)
             );
         }
 
         this.transpositionTable.store(
             new TranspositionEntry(
-                loHash,
-                hiHash,
+                position.hash.lo,
+                position.hash.hi,
                 bestScore,
                 bestMove,
                 depth,
@@ -307,62 +297,6 @@ class Search {
         }
         return scores;
     }
-
-    // #alphaBeta(currentPosition, depth, alpha, beta, isMaximizingPlayer) {
-    //     if (depth === 0 || !currentPosition.doLegalMovesExist()) {
-    //         return { value: evaluate(currentPosition), move: null };
-    //     }
-
-    //     let bestValue;
-    //     let bestMove = null;
-    //     const legalMoves = currentPosition.getLegalMoves();
-    //     if (isMaximizingPlayer) {
-    //         bestValue = -Infinity;
-    //         for (let move of legalMoves) {
-    //             const newPosition = new Position(currentPosition, move);
-    //             const result = this.#alphaBeta(
-    //                 newPosition,
-    //                 depth - 1,
-    //                 alpha,
-    //                 beta,
-    //                 false
-    //             );
-    //             if (result.value > bestValue) {
-    //                 bestValue = result.value;
-    //                 bestMove = move;
-    //             }
-    //             alpha = Math.max(alpha, bestValue);
-    //             if (alpha >= beta) {
-    //                 break; // Beta cut-off // is this fail-soft?
-    //             }
-    //         }
-    //     } else {
-    //         bestValue = Infinity;
-    //         for (let move of legalMoves) {
-    //             const newPosition = new Position(currentPosition, move);
-    //             const result = this.#alphaBeta(
-    //                 newPosition,
-    //                 depth - 1,
-    //                 alpha,
-    //                 beta,
-    //                 true
-    //             );
-    //             if (result.value < bestValue) {
-    //                 bestValue = result.value;
-    //                 bestMove = move;
-    //             }
-    //             beta = Math.min(beta, bestValue);
-    //             if (alpha >= beta) {
-    //                 break; // Alpha cut-off // is this fail-soft?
-    //             }
-    //         }
-    //     }
-    //     return { value: bestValue, move: bestMove };
-    // }
-
-    // #evaluate(position) {
-    //     return Math.random() * 20 - 10;
-    // }
 }
 
 export default Search;

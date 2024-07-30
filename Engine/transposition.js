@@ -4,6 +4,15 @@ const TTFlag = Object.freeze({
     BETA: 2,
 });
 
+class PerftEntry {
+    constructor(loHash, hiHash, depth, nodes) {
+        this.loHash = loHash;
+        this.hiHash = hiHash;
+        this.depth = depth;
+        this.nodes = nodes;
+    }
+}
+
 class TranspositionEntry {
     constructor(loHash, hiHash, value, move, depth, flag) {
         this.loHash = loHash;
@@ -16,16 +25,15 @@ class TranspositionEntry {
 }
 
 class PVEntry {
-    constructor(loHash, hiHash, moves, ply) {
+    constructor(loHash, hiHash, moves) {
         this.loHash = loHash;
         this.hiHash = hiHash;
         this.moves = moves;
-        this.ply = ply;
     }
 }
 
 class TranspositionTable {
-    ENABLED = false;
+    ENABLED = true;
 
     constructor(maxSize = 1e6) {
         this.sqrtSize = Math.floor(Math.sqrt(maxSize));
@@ -34,7 +42,6 @@ class TranspositionTable {
         this.currentSize = 0;
     }
 
-    //store(loHash, hiHash, value, move, depth, flag) {
     store(entry) {
         if (!this.ENABLED) {
             return;
@@ -45,13 +52,29 @@ class TranspositionTable {
         }
         const hiIndex = entry.hiHash % this.table[loIndex].length;
         const oldEntry = this.table[loIndex][hiIndex];
-        if (
-            oldEntry === undefined ||
-            (oldEntry.depth && entry.depth && oldEntry.depth <= entry.depth) ||
-            (oldEntry.ply && entry.ply && oldEntry.ply <= entry.ply)
-        ) {
+
+        if (oldEntry === undefined) {
+            this.currentSize++;
+        }
+        if (oldEntry === undefined || this.#shouldReplace(oldEntry, entry)) {
             this.table[loIndex][hiIndex] = entry;
         }
+    }
+
+    #shouldReplace(oldEntry, entry) {
+        if (oldEntry instanceof TranspositionEntry) {
+            return (
+                oldEntry.depth &&
+                entry.depth &&
+                oldEntry.depth <= oldEntry.depth
+            );
+        } else if (
+            oldEntry instanceof PVEntry ||
+            oldEntry instanceof PerftEntry
+        ) {
+            return true; // always replace
+        }
+        return false;
     }
 
     get(loHash, hiHash) {
@@ -74,4 +97,4 @@ class TranspositionTable {
     }
 }
 
-export { TranspositionTable, TranspositionEntry, PVEntry, TTFlag };
+export { TranspositionTable, TranspositionEntry, PVEntry, PerftEntry, TTFlag };

@@ -1,33 +1,49 @@
 import { generatePseudoLegal } from "../GameManager/bbmovegen.js";
+import { TranspositionTable, PerftEntry } from "../Engine/transposition.js";
 
 function perftRoot(position, depth) {
     if (depth === 0) {
         return 1;
     }
+
+    const ttTable = new TranspositionTable();
+
     let nodes = 0;
     const moves = generatePseudoLegal(position);
     for (let move of moves) {
         if (position.makeMove(move)) {
-            nodes += perft(position, depth - 1);
+            nodes += perft(position, depth - 1, ttTable);
             console.log(`Update... ${nodes}`);
         }
         position.undoMove(move);
     }
+
     return nodes;
 }
 
-function perft(position, depth) {
+function perft(position, depth, ttTable) {
     if (depth === 0) {
         return 1;
     }
+
+    const perftEntry = ttTable.get(position.hash.lo, position.hash.hi);
+    if (perftEntry && perftEntry.depth === depth) {
+        return perftEntry.nodes;
+    }
+
     let nodes = 0;
     const moves = generatePseudoLegal(position);
     for (let move of moves) {
         if (position.makeMove(move)) {
-            nodes += perft(position, depth - 1);
+            nodes += perft(position, depth - 1, ttTable);
         }
         position.undoMove(move);
     }
+
+    ttTable.store(
+        new PerftEntry(position.hash.lo, position.hash.hi, depth, nodes)
+    );
+
     return nodes;
 }
 

@@ -2,6 +2,7 @@ import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
 import Bitboard from "./bitboard.js";
 import { MoveType } from "./Immutable/bbMove.js";
 import { sqIsAttacked } from "./bbmovegen.js";
+import zobrist from "../Engine/zobrist.js";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -38,31 +39,14 @@ class IrreversableState {
 }
 
 class BBPosition {
-    // pieces;
-    // sides;
-    // squares;
-    // currentTurn;
-    // enPassantSquare;
-    // whiteKingsideRights;
-    // whiteQueensideRights;
-    // blackKingsideRights;
-    // blackQueensideRights;
-    // rule50;
-    // ply;
-    // hash;
-
-    // states
-
     constructor(fen = STARTING_FEN) {
         this.pieces = Array.from({ length: 2 }, () =>
             Array.from({ length: 6 }, () => new Bitboard())
         );
-        // this.pieces = new Array(2).fill(new Array(6).fill(new Bitboard()));
         this.sides = [new Bitboard(), new Bitboard()];
         this.squares = new Array(64).fill(null);
         this.prevStates = [];
         this.#createFromFEN(fen);
-        // this.#hash =
     }
 
     #createFromFEN(fen) {
@@ -164,6 +148,8 @@ class BBPosition {
         if (this.currentTurn === PieceColour.BLACK) {
             this.ply--;
         }
+
+        this.hash = zobrist.computeHash(this);
     }
 
     generateFEN() {
@@ -259,7 +245,7 @@ class BBPosition {
 
         this.prevStates.push(
             new IrreversableState({
-                hash: this.hash,
+                hash: this.hash.copy(),
                 whiteKingsideRights: this.whiteKingsideRights,
                 whiteQueensideRights: this.whiteQueensideRights,
                 blackKingsideRights: this.blackKingsideRights,
@@ -273,44 +259,76 @@ class BBPosition {
 
         this.ply++;
         this.rule50++;
-        this.enPassantSquare = null;
+        if (this.enPassantSquare !== null) {
+            this.hash.toggle(zobrist.enPassantFiles[this.enPassantSquare % 8]);
+            this.enPassantSquare = null;
+        }
 
-        this.#clearPiece(fromSquare);
+        this.#zobristClearPiece(fromSquare);
+        this.hash.toggle(zobrist.pieceTable[fromSquare]);
 
         switch (move.moveType) {
             case MoveType.QUIET:
-                this.#putPiece(movedPiece.type, movedPiece.colour, toSquare);
+                this.#zobristPutPiece(
+                    movedPiece.type,
+                    movedPiece.colour,
+                    toSquare
+                );
                 break;
 
             case MoveType.CAPTURE:
-                this.#clearPiece(toSquare);
-                this.#putPiece(movedPiece.type, movedPiece.colour, toSquare);
+                this.#zobristClearPiece(toSquare);
+                this.#zobristPutPiece(
+                    movedPiece.type,
+                    movedPiece.colour,
+                    toSquare
+                );
                 this.rule50 = 0;
                 break;
 
             case MoveType.CAPTURE_EP:
                 const delta = movedPiece.colour === PieceColour.WHITE ? 8 : -8;
                 const capturedSquare = toSquare - delta;
-                this.#clearPiece(capturedSquare);
-                this.#putPiece(PieceType.PAWN, movedPiece.colour, toSquare);
+                this.#zobristClearPiece(capturedSquare);
+                this.#zobristPutPiece(
+                    PieceType.PAWN,
+                    movedPiece.colour,
+                    toSquare
+                );
                 this.rule50 = 0;
                 break;
 
             case MoveType.CASTLE:
-                this.#putPiece(PieceType.KING, movedPiece.colour, toSquare);
+                this.#zobristPutPiece(
+                    PieceType.KING,
+                    movedPiece.colour,
+                    toSquare
+                );
                 const [rookFromSquare, rookToSquare] =
                     this.#getCastleRookSquares(toSquare);
-                this.#clearPiece(rookFromSquare);
-                this.#putPiece(PieceType.ROOK, movedPiece.colour, rookToSquare);
+                this.#zobristClearPiece(rookFromSquare);
+                this.#zobristPutPiece(
+                    PieceType.ROOK,
+                    movedPiece.colour,
+                    rookToSquare
+                );
                 break;
 
             case MoveType.PROMOTION:
-                this.#putPiece(move.promotionType, movedPiece.colour, toSquare);
+                this.#zobristPutPiece(
+                    move.promotionType,
+                    movedPiece.colour,
+                    toSquare
+                );
                 break;
 
             case MoveType.PROMOTION_CAPTURE:
-                this.#clearPiece(toSquare);
-                this.#putPiece(move.promotionType, movedPiece.colour, toSquare);
+                this.#zobristClearPiece(toSquare);
+                this.#zobristPutPiece(
+                    move.promotionType,
+                    movedPiece.colour,
+                    toSquare
+                );
                 break;
         }
 
@@ -322,6 +340,9 @@ class BBPosition {
                 // double push pawn
                 const delta = movedPiece.colour === PieceColour.WHITE ? 8 : -8;
                 this.enPassantSquare = toSquare - delta;
+                this.hash.toggle(
+                    zobrist.enPassantFiles[this.enPassantSquare % 8]
+                );
             }
         }
 
@@ -349,8 +370,12 @@ class BBPosition {
             this.blackKingsideRights = false;
         }
 
+        this.#zobristUpdateCastling();
+
         const isValidMove = !this.isKingInCheck(this.currentTurn);
         this.currentTurn = PieceColour.getOpposite(this.currentTurn);
+
+        this.hash.toggle(zobrist.blackToMove);
 
         return isValidMove;
     }
@@ -443,6 +468,31 @@ class BBPosition {
         }
     }
 
+    #zobristPutPiece(type, colour, sq) {
+        this.pieces[colour][type].setBit(sq);
+        this.sides[colour].setBit(sq);
+        this.squares[sq] = new Piece(type, colour);
+
+        this.hash.toggle(
+            zobrist.pieceTable[sq][zobrist.getPieceIndex(type, colour)]
+        );
+    }
+
+    #zobristClearPiece(sq) {
+        const piece = this.squares[sq];
+        if (piece) {
+            this.pieces[piece.colour][piece.type].clearBit(sq);
+            this.sides[piece.colour].clearBit(sq);
+            this.squares[sq] = null;
+
+            this.hash.toggle(
+                zobrist.pieceTable[sq][
+                    zobrist.getPieceIndex(piece.type, piece.colour)
+                ]
+            );
+        }
+    }
+
     #getCastleRookSquares(kingToSquare) {
         if (kingToSquare === 2) {
             return [0, 3]; // white queenside
@@ -454,6 +504,24 @@ class BBPosition {
             return [63, 61]; // black kingside
         }
         throw new Error("invalid castling square");
+    }
+
+    #zobristUpdateCastling() {
+        if (this.prevStates.length) {
+            const prevState = this.prevStates.at(-1);
+            if (prevState.whiteKingsideRights !== this.whiteKingsideRights) {
+                this.hash.toggle(zobrist.whiteKingsideRights);
+            }
+            if (prevState.whiteQueensideRights !== this.whiteQueensideRights) {
+                this.hash.toggle(zobrist.whiteQueensideRights);
+            }
+            if (prevState.blackKingsideRights !== this.blackKingsideRights) {
+                this.hash.toggle(zobrist.blackKingsideRights);
+            }
+            if (prevState.blackQueensideRights !== this.blackQueensideRights) {
+                this.hash.toggle(zobrist.blackQueensideRights);
+            }
+        }
     }
 }
 
