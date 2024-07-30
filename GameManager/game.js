@@ -15,7 +15,7 @@ const GameType = Object.freeze({
 class Game {
     constructor() {
         this.position = null;
-        this.history = [];
+        this.moveHistory = [];
         this.currentLegalMoves = [];
     }
 
@@ -51,7 +51,7 @@ class Game {
     }
 
     getLastMove() {
-        return this.history.at(-1) || null;
+        return this.moveHistory.at(-1) || null;
     }
 
     getCurrentPosition() {

@@ -25,6 +25,16 @@ class Move {
             this.promotionType === other.promotionType
         );
     }
+
+    // TODO
+    encoded() {
+        return 0;
+    }
+
+    // TODO
+    static fromEncoded(encoded) {
+        return new Move(0, 0, MoveType.QUIET);
+    }
 }
 
 export { Move, MoveType };
