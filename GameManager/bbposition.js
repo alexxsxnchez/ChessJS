@@ -2,7 +2,7 @@ import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
 import Bitboard from "./bitboard.js";
 import { MoveType } from "./Immutable/bbMove.js";
 import { sqIsAttacked } from "./bbmovegen.js";
-import zobrist from "../Engine/zobrist.js";
+import { zobrist } from "../Engine/zobrist.js";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -39,13 +39,17 @@ class IrreversableState {
 }
 
 class BBPosition {
-    constructor(fen = STARTING_FEN) {
+    constructor(fen = STARTING_FEN, prevStates = null) {
         this.pieces = Array.from({ length: 2 }, () =>
             Array.from({ length: 6 }, () => new Bitboard())
         );
         this.sides = [new Bitboard(), new Bitboard()];
         this.squares = new Array(64).fill(null);
-        this.prevStates = [];
+        if (prevStates === null) {
+            this.prevStates = [];
+        } else {
+            this.prevStates = prevStates;
+        }
         this.#createFromFEN(fen);
     }
 
@@ -451,6 +455,84 @@ class BBPosition {
 
     getPiece(square) {
         return this.squares[square];
+    }
+
+    isNonStalemateDraw() {
+        if (this.rule50 >= 100) {
+            return true;
+        }
+
+        if (this.#isInsufficientMaterial()) {
+            return true;
+        }
+
+        // three-fold repetition
+        let foundOnceAlready = false;
+        if (this.prevStates) {
+            for (
+                let i = Math.max(this.prevStates.length - this.rule50, 0);
+                i < this.prevStates.length;
+                i++
+            ) {
+                if (this.prevStates[i].hash.isEqual(this.hash)) {
+                    if (foundOnceAlready) {
+                        return true;
+                    }
+                    foundOnceAlready = true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    #isInsufficientMaterial() {
+        const pawns =
+            this.pieces[PieceColour.WHITE][PieceType.PAWN].countBitsSet() +
+            this.pieces[PieceColour.BLACK][PieceType.PAWN].countBitsSet();
+        if (pawns > 0) {
+            return false;
+        }
+
+        const majors =
+            this.pieces[PieceColour.WHITE][PieceType.ROOK].countBitsSet() +
+            this.pieces[PieceColour.BLACK][PieceType.ROOK].countBitsSet() +
+            this.pieces[PieceColour.WHITE][PieceType.QUEEN].countBitsSet() +
+            this.pieces[PieceColour.BLACK][PieceType.QUEEN].countBitsSet();
+
+        if (majors > 0) {
+            return false;
+        }
+
+        const whiteKnights =
+            this.pieces[PieceColour.WHITE][PieceType.KNIGHT].countBitsSet();
+        const blackKnights =
+            this.pieces[PieceColour.BLACK][PieceType.KNIGHT].countBitsSet();
+        const whiteBishops =
+            this.pieces[PieceColour.WHITE][PieceType.BISHOP].countBitsSet();
+        const blackBishops =
+            this.pieces[PieceColour.BLACK][PieceType.BISHOP].countBitsSet();
+
+        const minors =
+            whiteKnights + blackKnights + whiteBishops + blackBishops;
+
+        if (minors <= 1) {
+            return true;
+        } else if (minors === 2) {
+            if (whiteBishops === 2 || blackBishops === 2) {
+                return false;
+            }
+            if (whiteBishops === 1 && whiteKnights === 1) {
+                return false;
+            }
+            if (blackBishops === 1 && blackKnights === 1) {
+                return false;
+            }
+            // no forced mate
+            return true;
+        }
+        // more than 2 minors
+        return false;
     }
 
     #putPiece(type, colour, sq) {

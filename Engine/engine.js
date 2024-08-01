@@ -1,5 +1,4 @@
 import eventBus from "../Common/eventbus.js";
-import Square from "../GameManager/Immutable/square.js";
 
 class Engine {
     constructor(game) {
@@ -12,6 +11,9 @@ class Engine {
             this.worker.postMessage({
                 type: "search",
                 fen: position.generateFEN(),
+                hashHistory: position.prevStates.map(
+                    (prevState) => prevState.hash
+                ),
             });
         });
 

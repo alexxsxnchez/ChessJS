@@ -82,6 +82,15 @@ class Game {
 
             eventBus.emit("state::updated");
 
+            if (this.position.isNonStalemateDraw()) {
+                eventBus.emit("game::end");
+                eventBus.emit(
+                    "game::draw",
+                    "50 move rule or insufficient material"
+                );
+                return;
+            }
+
             const canMove = this.currentLegalMoves.size > 0;
             const inCheck = this.position.isKingInCheck();
             if (canMove) {
@@ -111,7 +120,7 @@ class Game {
                         PieceColour.getOpposite(this.position.currentTurn)
                     );
                 } else {
-                    eventBus.emit("game::stalemate");
+                    eventBus.emit("game::draw", "stalemate");
                 }
             }
         } else {

@@ -4,6 +4,7 @@ import {
     TTFlag,
     TranspositionEntry,
 } from "./transposition.js";
+import Timer from "./timer.js";
 import evaluate from "./evaluation.js";
 import { PieceType } from "../GameManager/Immutable/Pieces/utils.js";
 import * as moveGen from "../GameManager/bbmovegen.js";
@@ -13,25 +14,23 @@ class Search {
     constructor() {
         this.transpositionTable = new TranspositionTable();
         this.pvTable = new TranspositionTable(); //1e4);
+        this.timer = new Timer();
         this.realPly = 0;
+        this.totalNodes = 0;
     }
 
     iterativeDeepeningSearch(position, timeLimit = 5000) {
-        const startTime = new Date();
+        this.totalNodes = 0;
         let currentDepth = 1;
         let lastGoodPVLine = []; // keeping separate from pvLine, bc might return out of negamax early bc of timer. so pvLine would be incomplete
-        // 100
+
+        this.timer.start(timeLimit);
         while (currentDepth <= 100) {
             const pvLine = [];
-            const elapsedTime = new Date() - startTime;
-            if (elapsedTime >= timeLimit) {
-                console.log(
-                    `Time limit reached before searching at depth ${currentDepth}. ${elapsedTime}ms elapsed.`
-                );
-                break;
-            }
             console.log(
-                `About to search at depth ${currentDepth}. ${elapsedTime}ms elapsed.`
+                `About to search at depth ${currentDepth}. ${this.timer.elapsed()}ms elapsed. ${
+                    this.totalNodes
+                } nodes searched.`
             );
 
             // TODO: can use score to create aspiration window for next iteration
@@ -43,6 +42,13 @@ class Search {
                 Infinity,
                 pvLine
             );
+
+            if (this.timer.stop) {
+                console.log(
+                    `Time limit reached searching at depth ${currentDepth}. ${this.timer.elapsed()}ms elapsed.`
+                );
+                break;
+            }
 
             console.log(
                 `PV Line for depth ${currentDepth}: ${JSON.stringify(pvLine)}`
@@ -62,9 +68,24 @@ class Search {
     }
 
     #negamax(position, depth, ply, alpha, beta, pvLine) {
+        this.totalNodes++;
+
+        if (this.totalNodes % 2048 === 0 && this.timer.check()) {
+            return 0;
+        }
+
+        if (position.isNonStalemateDraw()) {
+            return 0;
+        }
+
         const pvEntry = this.pvTable.get(position.hash.lo, position.hash.hi);
         if (pvEntry) {
             pvLine.splice(0, pvLine.length, ...pvEntry.moves);
+        }
+
+        if (depth === 0) {
+            this.totalNodes--;
+            return this.#qSearch(position, alpha, beta, pvLine);
         }
 
         const ttEntry = this.transpositionTable.get(
@@ -81,10 +102,6 @@ class Search {
             } else if (ttEntry.flag === TTFlag.BETA && ttEntry.value > beta) {
                 return beta;
             }
-        }
-
-        if (depth === 0) {
-            return this.#qSearch(position, alpha, beta, pvLine);
         }
 
         let bestScore = -Infinity;
@@ -122,6 +139,10 @@ class Search {
                 childPVLine
             );
             position.undoMove(move);
+
+            if (this.timer.stop) {
+                return 0;
+            }
 
             if (score > bestScore) {
                 bestScore = score;
@@ -178,6 +199,12 @@ class Search {
     // TODO: qSearch doesn't know what checkmate/stalemate is!!
     // forcing checks that lead to checkmate beyond a bit of depth, the engine currently can't see, even though qSearch should find that!
     #qSearch(position, alpha, beta, pvLine) {
+        this.totalNodes++;
+
+        if (this.totalNodes % 2048 === 0 && this.timer.check()) {
+            return 0;
+        }
+
         let bestScore = evaluate(position);
 
         const inCheck = position.isKingInCheck();
@@ -210,6 +237,10 @@ class Search {
             }
             const score = -this.#qSearch(position, -beta, -alpha, childPVLine);
             position.undoMove(move);
+
+            if (this.timer.stop) {
+                return 0;
+            }
 
             bestScore = Math.max(bestScore, score);
 

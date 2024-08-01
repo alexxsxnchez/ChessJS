@@ -1,5 +1,6 @@
 import Search from "./search.js";
 import BBPosition from "../GameManager/bbposition.js";
+import { ZobristHash } from "./zobrist.js";
 import { perftRoot } from "../Perft/perft.js";
 
 const search = new Search();
@@ -24,8 +25,10 @@ function runPerftTest(fen, depth, expected) {
 onmessage = (e) => {
     const data = e.data;
     if (data.type === "search") {
-        const position = new BBPosition(data.fen);
-        console.log(position);
+        const hashHistory = data.hashHistory.map((value) => {
+            return { hash: new ZobristHash(value.lo, value.hi) };
+        });
+        const position = new BBPosition(data.fen, hashHistory);
         const result = search.iterativeDeepeningSearch(position);
         postMessage(result);
         // } else if (data.type === "cancel") {

@@ -3,7 +3,7 @@ import {
     PieceType,
 } from "../GameManager/Immutable/Pieces/utils.js";
 
-class Hash {
+class ZobristHash {
     constructor(lo = 0, hi = 0) {
         this.lo = lo;
         this.hi = hi;
@@ -15,7 +15,11 @@ class Hash {
     }
 
     copy() {
-        return new Hash(this.lo, this.hi);
+        return new ZobristHash(this.lo, this.hi);
+    }
+
+    isEqual(otherHash) {
+        return this.lo === otherHash.lo && this.hi === otherHash.hi;
     }
 }
 
@@ -29,35 +33,35 @@ class Zobrist {
             for (let sq = 0; sq < 64; sq++) {
                 this.pieceTable[sq] = new Array(12);
                 for (let piece = 0; piece < 12; piece++) {
-                    this.pieceTable[sq][piece] = new Hash(
+                    this.pieceTable[sq][piece] = new ZobristHash(
                         this.#getRandom32BitNumber(),
                         this.#getRandom32BitNumber()
                     );
                 }
             }
-            this.whiteKingsideRights = new Hash(
+            this.whiteKingsideRights = new ZobristHash(
                 this.#getRandom32BitNumber(),
                 this.#getRandom32BitNumber()
             );
-            this.whiteQueensideRights = new Hash(
+            this.whiteQueensideRights = new ZobristHash(
                 this.#getRandom32BitNumber(),
                 this.#getRandom32BitNumber()
             );
-            this.blackKingsideRights = new Hash(
+            this.blackKingsideRights = new ZobristHash(
                 this.#getRandom32BitNumber(),
                 this.#getRandom32BitNumber()
             );
-            this.blackQueensideRights = new Hash(
+            this.blackQueensideRights = new ZobristHash(
                 this.#getRandom32BitNumber(),
                 this.#getRandom32BitNumber()
             );
-            this.blackToMove = new Hash(
+            this.blackToMove = new ZobristHash(
                 this.#getRandom32BitNumber(),
                 this.#getRandom32BitNumber()
             );
             this.enPassantFiles = new Array(8);
             for (let i = 0; i < 8; i++) {
-                this.enPassantFiles[i] = new Hash(
+                this.enPassantFiles[i] = new ZobristHash(
                     this.#getRandom32BitNumber(),
                     this.#getRandom32BitNumber()
                 );
@@ -68,7 +72,7 @@ class Zobrist {
     }
 
     computeHash(position) {
-        let hash = new Hash();
+        let hash = new ZobristHash();
         if (position.currentTurn === PieceColour.BLACK) {
             hash.toggle(this.blackToMove);
         }
@@ -141,7 +145,7 @@ class Zobrist {
     }
 }
 
-const instance = new Zobrist();
-Object.freeze(instance);
+const zobrist = new Zobrist();
+Object.freeze(zobrist);
 
-export default instance;
+export { zobrist, ZobristHash };

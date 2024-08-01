@@ -65,8 +65,8 @@ class Chessboard {
             this.blackInputEnabled = false;
         });
 
-        eventBus.on("game::stalemate", () => {
-            console.log("stalemate");
+        eventBus.on("game::draw", (reason) => {
+            console.log(reason);
             this.whiteInputEnabled = false;
             this.blackInputEnabled = false;
         });
