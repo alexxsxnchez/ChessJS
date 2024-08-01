@@ -1,4 +1,4 @@
-import { generatePseudoLegal } from "../GameManager/bbmovegen.js";
+import { generatePseudoLegal } from "../GameLogic/movegen.js";
 import { TranspositionTable, PerftEntry } from "../Engine/transposition.js";
 
 function perftRoot(position, depth) {

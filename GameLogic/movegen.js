@@ -1,7 +1,7 @@
-import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
+import { PieceColour, PieceType } from "./piece.js";
 import Bitboard from "./bitboard.js";
 import PRECOMPUTED from "./precomputed.js";
-import { Move, MoveType } from "./Immutable/bbMove.js";
+import { Move, MoveType } from "./move.js";
 
 function sqIsAttacked(position, sq, attackingColour) {
     const queenBB = position.pieces[attackingColour][PieceType.QUEEN];

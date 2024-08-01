@@ -1,8 +1,8 @@
-import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
+import { PieceColour, PieceType } from "./piece.js";
 import Bitboard from "./bitboard.js";
-import { MoveType } from "./Immutable/bbMove.js";
-import { sqIsAttacked } from "./bbmovegen.js";
-import { zobrist } from "../Engine/zobrist.js";
+import { MoveType } from "./move.js";
+import { sqIsAttacked } from "./movegen.js";
+import { zobrist } from "./zobrist.js";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -38,7 +38,7 @@ class IrreversableState {
     }
 }
 
-class BBPosition {
+class Position {
     constructor(fen = STARTING_FEN, prevStates = null) {
         this.pieces = Array.from({ length: 2 }, () =>
             Array.from({ length: 6 }, () => new Bitboard())
@@ -607,4 +607,4 @@ class BBPosition {
     }
 }
 
-export default BBPosition;
+export default Position;

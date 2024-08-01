@@ -1,7 +1,4 @@
-import {
-    PieceColour,
-    PieceType,
-} from "../GameManager/Immutable/Pieces/utils.js";
+import { PieceColour, PieceType } from "../GameLogic/piece.js";
 
 const PAWN_VALUE = 100;
 const KNIGHT_VALUE = 320;

@@ -1,11 +1,6 @@
 import eventBus from "../Common/eventbus.js";
-import {
-    PieceColour,
-    PieceType,
-} from "../GameManager/Immutable/Pieces/utils.js";
 
 const PIECE_TYPES = ["pawn", "rook", "knight", "bishop", "queen", "king"];
-
 const COLOURS = ["white", "black"];
 
 class AssetLoader {

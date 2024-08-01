@@ -1,9 +1,9 @@
 import eventBus from "../Common/eventbus.js";
-import { PieceColour, PieceType } from "./Immutable/Pieces/utils.js";
-import { Move, MoveType } from "./Immutable/bbMove.js";
+import { PieceColour, PieceType } from "./piece.js";
+import { Move, MoveType } from "./move.js";
 import Engine from "../Engine/engine.js";
-import BBPosition from "./bbposition.js";
-import { generateLegalForSquare } from "./bbmovegen.js";
+import Position from "./position.js";
+import { generateLegalForSquare } from "./movegen.js";
 
 const GameType = Object.freeze({
     HUMAN_VS_HUMAN: "human_vs_human",
@@ -32,7 +32,7 @@ class Game {
         }
 
         this.gameType = gameType;
-        this.position = new BBPosition();
+        this.position = new Position();
         this.moveHistory = [];
         this.currentLegalMoves = generateLegalForSquare(this.position);
 

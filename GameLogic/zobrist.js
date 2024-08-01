@@ -1,7 +1,4 @@
-import {
-    PieceColour,
-    PieceType,
-} from "../GameManager/Immutable/Pieces/utils.js";
+import { PieceColour, PieceType } from "./piece.js";
 
 class ZobristHash {
     constructor(lo = 0, hi = 0) {

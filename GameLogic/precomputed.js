@@ -1,4 +1,4 @@
-import { PieceColour } from "./Immutable/Pieces/utils.js";
+import { PieceColour } from "./piece.js";
 import Bitboard from "./bitboard.js";
 
 class Precomputed {

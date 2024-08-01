@@ -1,5 +1,5 @@
 import eventBus from "./Common/eventbus.js";
-import { Game, GameType } from "./GameManager/game.js";
+import { Game, GameType } from "./GameLogic/game.js";
 import SidePanel from "./UI/sidepanel.js";
 import AssetLoader from "./UI/assetLoader.js";
 import Chessboard from "./UI/chessboard.js";
@@ -43,4 +43,4 @@ function main() {
     });
 }
 
-main(true);
+main();

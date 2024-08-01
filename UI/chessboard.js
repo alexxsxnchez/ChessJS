@@ -1,9 +1,6 @@
-import {
-    PieceColour,
-    PieceType,
-} from "../GameManager/Immutable/Pieces/utils.js";
+import { PieceColour, PieceType } from "../GameLogic/piece.js";
 import eventBus from "../Common/eventbus.js";
-import { Move, MoveType } from "../GameManager/Immutable/bbMove.js";
+import { MoveType } from "../GameLogic/move.js";
 
 const BOARD_SIZE = 8;
 const BORDER_WIDTH = 3;

@@ -6,9 +6,9 @@ import {
 } from "./transposition.js";
 import Timer from "./timer.js";
 import evaluate from "./evaluation.js";
-import { PieceType } from "../GameManager/Immutable/Pieces/utils.js";
-import * as moveGen from "../GameManager/bbmovegen.js";
-import { MoveType } from "../GameManager/Immutable/bbMove.js";
+import { PieceType } from "../GameLogic/piece.js";
+import * as moveGen from "../GameLogic/movegen.js";
+import { MoveType } from "../GameLogic/move.js";
 
 class Search {
     constructor() {
