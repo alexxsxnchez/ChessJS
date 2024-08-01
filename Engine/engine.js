@@ -1,4 +1,5 @@
 import eventBus from "../Common/eventbus.js";
+import { Move } from "../GameLogic/move.js";
 
 class Engine {
     constructor(game) {
@@ -22,14 +23,25 @@ class Engine {
                 console.log("cancelled. not processing");
                 return;
             }
-            const moveObject = e.data;
-            if (moveObject) {
-                this.game.makeMove(
-                    moveObject.fromSquare,
-                    moveObject.toSquare,
-                    moveObject.promotionType
-                );
+            if (e.data === null || e.data.length === 0) {
+                console.error("worker returned bad result");
+                return;
             }
+            const pvLine = e.data.map(
+                (moveObject) =>
+                    new Move(
+                        moveObject.fromSquare,
+                        moveObject.toSquare,
+                        moveObject.moveType,
+                        moveObject.promotionType
+                    )
+            );
+            eventBus.emit("engine::pv", pvLine);
+            this.game.makeMove(
+                pvLine[0].fromSquare,
+                pvLine[0].toSquare,
+                pvLine[0].promotionType
+            );
         };
     }
 

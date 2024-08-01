@@ -61,10 +61,13 @@ class Search {
         this.realPly++;
 
         console.log(`PV Line: ${JSON.stringify(lastGoodPVLine)}`);
-        const bestMove = lastGoodPVLine.length > 0 ? lastGoodPVLine[0] : null;
-        console.log(`Best move: ${JSON.stringify(bestMove)}`);
-        console.log(bestMove);
-        return bestMove;
+        if (lastGoodPVLine.length > 0) {
+            const bestMove = lastGoodPVLine[0];
+            console.log(`Best move: ${JSON.stringify(bestMove)}`);
+            console.log(bestMove);
+            return lastGoodPVLine;
+        }
+        return null;
     }
 
     #negamax(position, depth, ply, alpha, beta, pvLine) {

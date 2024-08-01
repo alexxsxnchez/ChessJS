@@ -26,6 +26,14 @@ class Move {
         );
     }
 
+    toString() {
+        const fromRow = Math.floor(this.fromSquare / 8) + 1;
+        const fromCol = String.fromCharCode((this.fromSquare % 8) + 97);
+        const toRow = Math.floor(this.toSquare / 8) + 1;
+        const toCol = String.fromCharCode((this.toSquare % 8) + 97);
+        return `${fromCol}${fromRow}->${toCol}${toRow}`;
+    }
+
     // TODO
     encoded() {
         return 0;

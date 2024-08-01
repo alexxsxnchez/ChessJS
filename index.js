@@ -1,6 +1,6 @@
 import eventBus from "./Common/eventbus.js";
+import "./UI/sidepanel.js";
 import { Game, GameType } from "./GameLogic/game.js";
-import SidePanel from "./UI/sidepanel.js";
 import AssetLoader from "./UI/assetLoader.js";
 import Chessboard from "./UI/chessboard.js";
 import SoundManager from "./UI/soundManager.js";
@@ -12,7 +12,7 @@ function main() {
     let chessboard;
     let soundManager;
     let game;
-    const sidepanel = new SidePanel();
+
     if (!PERFT_TESTING) {
         const assetLoader = new AssetLoader(); // load assets
 
